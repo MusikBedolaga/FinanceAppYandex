@@ -11,7 +11,7 @@ import SwiftUI
 struct FinanceAppYandexApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            TabBarApp()
         }
     }
 }
