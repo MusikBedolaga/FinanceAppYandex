@@ -32,7 +32,9 @@ struct TabBarApp: View {
                 .tag(1)
             
             // Вкладка 3 - Счет
-            Text("Экран счета")
+            NavigationStack {
+                MyAccountView()
+            }
                 .tabItem {
                     Label("Счет", systemImage: "wallet.pass.fill")
                 }
@@ -52,6 +54,7 @@ struct TabBarApp: View {
                 }
                 .tag(4)
         }
+        .tabBarBackground(color: UIColor.white)
     }
 }
 
