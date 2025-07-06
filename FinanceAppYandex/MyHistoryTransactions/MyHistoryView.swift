@@ -12,6 +12,7 @@ struct MyHistoryView: View {
     private var direction: Direction
     
     @StateObject private var viewModel: MyHistoryViewModel
+    @State private var showAnalysis = false
     
     init(direction: Direction) {
         self.direction = direction
@@ -31,13 +32,21 @@ struct MyHistoryView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    print("Переход на экран аналитики")
+                    showAnalysis = true
                 } label: {
                     Image(systemName: "doc")
                         .tint(.purple)
                 }
             }
         }
+        .background(
+            NavigationLink(
+                destination: AnalysisView(direction: self.direction),
+                isActive: $showAnalysis,
+                label: { EmptyView() }
+            )
+            .hidden()
+        )
         .onChange(of: viewModel.startDate) { _ in
             Task {
                 await viewModel.fetchTransactions()
