@@ -2,13 +2,17 @@ import Foundation
 
 @MainActor
 final class AnalysisViewModel {
+    
+    private var transactionService = TransactionsService()
+    private var originalTransactions: [Transaction] = []
+    
     var transactions = [Transaction]()
-    var transactionService = TransactionsService()
     var direction: Direction
     var startDate: Date
     var endDate: Date
     var totalAmountForDate: Decimal = 0
     var onTransactionsUpdated: (() -> Void)?
+    var sortOption: SortOptions = .none
     
     init(direction: Direction) {
         self.direction = direction
@@ -22,11 +26,41 @@ final class AnalysisViewModel {
     }
     
     func fetchTransactions() async {
-        transactions = transactionService.getAll()
+        let allTransactionForDate = await transactionService.get(from: startDate, to: endDate)
+        let filtered = allTransactionForDate.filter { $0.category.direction == self.direction }
+        
+        self.transactions = filtered
+        self.originalTransactions = filtered
+        
         calculateTotalAmountForDate()
+        setOption(sortOption)
         onTransactionsUpdated?()
     }
     
+    func setStartTime(_ date: Date) {
+        startDate = date
+        if startDate > endDate {
+            endDate = startDate
+        }
+        Task {
+            await fetchTransactions()
+        }
+    }
+    
+    func setFinishTime(_ date: Date) {
+        endDate = date
+        if endDate < startDate {
+            startDate = endDate
+        }
+        Task {
+            await fetchTransactions()
+        }
+    }
+    
+    func updateSortOption(to option: SortOptions) {
+        sortOption = option
+        setOption(option)
+    }
     
     private static func getDefaultTime() -> (Date, Date) {
         let now = Date()
@@ -41,4 +75,14 @@ final class AnalysisViewModel {
         totalAmountForDate = transactions.reduce(0) { $0 + $1.amount}
     }
     
+    private func setOption(_ sortOption: SortOptions) {
+        switch (sortOption) {
+        case .date:
+            transactions.sort { $0.transactionDate < $1.transactionDate}
+        case .amount:
+            transactions.sort { $0.amount < $1.amount}
+        case .none:
+            transactions = originalTransactions
+        }
+    }
 }

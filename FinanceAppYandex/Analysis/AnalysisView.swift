@@ -14,8 +14,6 @@ struct AnalysisView: UIViewControllerRepresentable {
         return AnalysisVC(direction: direction)
     }
     
-    func updateUIViewController(_ uiViewController: AnalysisVC, context: Context) {
-        
-    }
+    func updateUIViewController(_ uiViewController: AnalysisVC, context: Context) {}
 }
 

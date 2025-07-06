@@ -5,11 +5,16 @@ import UIKit
 //TODO: Сделать кастомный DataPicker
 final class AnalysisVC: UIViewController {
     private let analysisMainView = AnalysisMainView()
-    private var startDate = Date()
-    private var endDate = Date()
     private let direction: Direction
     private lazy var vm = AnalysisViewModel(direction: direction)
 
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        analysisMainView.setStartPeriod(self.format(date: vm.startDate))
+        analysisMainView.setEndPeriod(self.format(date: vm.endDate))
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupView()
@@ -30,24 +35,29 @@ final class AnalysisVC: UIViewController {
         view = analysisMainView
 
         analysisMainView.onStartDateTap = { [weak self] in
-            self?.showDatePicker(
+            guard let self = self else { return }
+            self.showDatePicker(
                 title: "Выберите начало периода",
-                date: self?.startDate ?? Date()
+                date: self.vm.startDate
             ) { [weak self] date in
-                self?.startDate = date
-                self?.analysisMainView.setStartPeriod(self?.format(date: date) ?? "")
+                guard let self = self else { return }
+                self.vm.setStartTime(date)
+                self.updateDateFields()
             }
         }
+
         analysisMainView.onEndDateTap = { [weak self] in
-            self?.showDatePicker(
+            guard let self = self else { return }
+            self.showDatePicker(
                 title: "Выберите конец периода",
-                date: self?.endDate ?? Date()
+                date: self.vm.endDate
             ) { [weak self] date in
-                self?.endDate = date
-                self?.analysisMainView.setEndPeriod(self?.format(date: date) ?? "")
+                guard let self = self else { return }
+                self.vm.setFinishTime(date)
+                self.updateDateFields()
             }
         }
-        
+
         analysisMainView.setupOperationTable(dataSource: self, delegate: self)
         
         vm.onTransactionsUpdated = { [weak self] in
@@ -55,6 +65,11 @@ final class AnalysisVC: UIViewController {
             self.analysisMainView.operationTable.reloadData()
             let amount = self.vm.totalAmountForDate
             self.analysisMainView.setAmount("\(amount)")
+        }
+        
+        analysisMainView.onSortChanged = { [weak self] sortOption in
+            self?.vm.updateSortOption(to: sortOption)
+            self?.analysisMainView.operationTable.reloadData()
         }
     }
 
@@ -77,13 +92,18 @@ final class AnalysisVC: UIViewController {
     private func format(date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ru_RU")
-        formatter.dateFormat = "LLLL yyyy"
+        formatter.dateFormat = "d MMMM yyyy"
         return formatter.string(from: date).capitalized
+    }
+    
+    private func updateDateFields() {
+        analysisMainView.setStartPeriod(format(date: vm.startDate))
+        analysisMainView.setEndPeriod(format(date: vm.endDate))
     }
 }
 
 
-//MARK: = UITableViewDataSource
+//MARK: - UITableViewDataSource
 extension AnalysisVC: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         print(vm.transactions.count)

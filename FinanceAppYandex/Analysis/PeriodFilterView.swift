@@ -69,12 +69,8 @@ final class PeriodFilterView: UIView {
             $0.textAlignment = .center
             $0.isUserInteractionEnabled = true
         }
-        startValueLabel.text = "Февраль 2025"
-        endValueLabel.text = "Март 2025"
-        
         sumValueLabel.font = .systemFont(ofSize: 19)
         sumValueLabel.textColor = .black
-        sumValueLabel.text = "125 868 ₽"
         
         [line1, line2].forEach {
             $0.backgroundColor = UIColor(white: 0.92, alpha: 1)
