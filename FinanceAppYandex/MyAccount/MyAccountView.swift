@@ -36,7 +36,7 @@ struct MyAccountView: View {
                 .animation(.easeInOut, value: showCurrencyPicker)
             }
             .refreshable {
-                await viewModel.refresh()
+                viewModel.refresh()
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
