@@ -18,6 +18,10 @@ extension Color {
     static let customGray = Color(hex: "#8080808C")
     
     static let backgroundScreenColor = Color(hex: "#F2F2F7")
+    
+    static let searchBarColor = Color(hex: "#7878801F")
+    
+    static let subTitleColor = Color(hex: "#3C3C4399")
 }
 
 //Добавление нового конструктора

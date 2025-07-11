@@ -41,7 +41,9 @@ struct TabBarApp: View {
                 .tag(2)
             
             // Вкладка 4 - Статьи
-            Text("Экран статей")
+            NavigationStack {
+                MyArticlesView()
+            }
                 .tabItem {
                     Label("Статьи", systemImage: "list.bullet.rectangle")
                 }

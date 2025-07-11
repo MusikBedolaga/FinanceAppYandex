@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		347AA21B2E1741510036F794 /* Fuse in Frameworks */ = {isa = PBXBuildFile; productRef = 347AA21A2E1741510036F794 /* Fuse */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		349172B92DFB80F5001896DA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				347AA21B2E1741510036F794 /* Fuse in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = FinanceAppYandex;
 			packageProductDependencies = (
+				347AA21A2E1741510036F794 /* Fuse */,
 			);
 			productName = FinanceAppYandex;
 			productReference = 349172A82DFB80F4001896DA /* FinanceAppYandex.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = 3491729F2DFB80F4001896DA;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				347AA2192E1741510036F794 /* XCRemoteSwiftPackageReference "fuse-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 349172A92DFB80F4001896DA /* Products */;
 			projectDirPath = "";
@@ -554,6 +563,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		347AA2192E1741510036F794 /* XCRemoteSwiftPackageReference "fuse-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/krisk/fuse-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.4.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		347AA21A2E1741510036F794 /* Fuse */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 347AA2192E1741510036F794 /* XCRemoteSwiftPackageReference "fuse-swift" */;
+			productName = Fuse;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 349172A02DFB80F4001896DA /* Project object */;
 }
