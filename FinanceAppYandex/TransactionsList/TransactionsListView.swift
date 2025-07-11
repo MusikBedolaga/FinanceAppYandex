@@ -12,6 +12,7 @@ struct TransactionsListView: View {
     @StateObject private var viewModel = TransactionsListViewModel()
     @State private var isPresentingAddScreen = false
     @State private var isShowingHistory = false
+    @State private var isEditingScreen = false
     
     private let titleText: String
     private let direction: Direction
@@ -36,9 +37,12 @@ struct TransactionsListView: View {
             .padding()
             .background(Color(UIColor.systemGroupedBackground))
             
-            AddTransactionButton(isPresented: $isPresentingAddScreen)
-                .padding(.trailing, 24)
-                .padding(.bottom, 24)
+            AddTransactionButton(isPresented: $isPresentingAddScreen) {
+                
+            }
+            .padding(.trailing, 24)
+            .padding(.bottom, 24)
+                
             
             NavigationLink(destination: MyHistoryView(direction: direction), isActive: $isShowingHistory) {
                 EmptyView()
@@ -57,6 +61,13 @@ struct TransactionsListView: View {
                 }
 
             }
+        }
+        .sheet(isPresented: $isPresentingAddScreen, onDismiss: {
+            Task {
+                await viewModel.loadTransactions(for: direction)
+            }
+        }) {
+            EditTransactionView(direction: direction, transaction: nil)
         }
     }
     
@@ -90,7 +101,14 @@ struct TransactionsListView: View {
                         .padding(.top, 40)
                 } else {
                     ForEach(viewModel.transactions, id: \.id) { transaction in
-                        TransactionCellView(transaction: transaction)
+                        NavigationLink(
+                            destination: EditTransactionView(
+                                direction: direction,
+                                transaction: transaction
+                            )
+                        ) {
+                            TransactionCellView(transaction: transaction)
+                        }
                     }
                 }
             }

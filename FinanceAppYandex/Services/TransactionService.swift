@@ -7,6 +7,7 @@
 
 import Foundation
 
+//TODO: Сделать actor
 final class TransactionsService {
     private var bankAccount = BankAccount(
         id: 1,
@@ -27,8 +28,11 @@ final class TransactionsService {
     ]
     
     private(set) var transactions: [Transaction] = []
+    
 
-    init() {
+    static let shared = TransactionsService()
+
+    private init() {
         let calendar = Calendar.current
         let now = Date()
         
@@ -131,3 +135,29 @@ final class TransactionsService {
 }
 
 
+
+extension TransactionsService {
+    func defaultTransactionIncome() -> Transaction {
+        return Transaction(
+            id: Int.random(in: 0...1000),
+            account: bankAccount,
+            category: categories[0],
+            amount: 0,
+            transactionDate: Date(),
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+    }
+    
+    func defaultTransactionOutcome() -> Transaction {
+        return Transaction(
+            id: Int.random(in: 0...1000),
+            account: bankAccount,
+            category: categories[4],
+            amount: 0,
+            transactionDate: Date(),
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+    }
+}

@@ -23,7 +23,7 @@ final class MyHistoryViewModel: ObservableObject {
     @Published var transactions: [Transaction] = []
     @Published var sortOption: SortOptions = .none
     
-    private let transactionService = TransactionsService()
+    private let transactionService = TransactionsService.shared
     private var direction: Direction
     private var originalTransactions: [Transaction] = []
 

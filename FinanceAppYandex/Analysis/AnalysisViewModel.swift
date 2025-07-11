@@ -3,7 +3,7 @@ import Foundation
 @MainActor
 final class AnalysisViewModel {
     
-    private var transactionService = TransactionsService()
+    private var transactionService = TransactionsService.shared
     private var originalTransactions: [Transaction] = []
     
     var transactions = [Transaction]()

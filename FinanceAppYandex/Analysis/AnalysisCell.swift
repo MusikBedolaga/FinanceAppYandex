@@ -132,7 +132,7 @@ final class AnalysisCell: UITableViewCell {
     func configure(with tx: Transaction) {
         emojiLabel.text = String(tx.category.emoji)
         titleLabel.text = tx.category.name
-        subtitleLabel.text = "Тут долдно быть описание но в моей модели этого нету("
+        subtitleLabel.text = tx.comment ?? "Нету"
         percentLabel.text = "20%"
         amountLabel.text = "\(NSDecimalNumber(decimal: tx.amount).intValue) ₽"
     }

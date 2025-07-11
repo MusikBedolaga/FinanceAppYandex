@@ -43,3 +43,17 @@ extension View {
         clipShape(RoundedCorner(radius: radius, corners: corners))
     }
 }
+
+extension View {
+    @ViewBuilder
+    func placeholder<Content: View>(
+        when shouldShow: Bool,
+        alignment: Alignment = .leading,
+        @ViewBuilder placeholder: () -> Content
+    ) -> some View {
+        ZStack(alignment: alignment) {
+            self
+            if shouldShow { placeholder() }
+        }
+    }
+}
