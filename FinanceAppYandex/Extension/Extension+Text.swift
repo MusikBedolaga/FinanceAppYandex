@@ -14,4 +14,10 @@ extension Text {
             .font(.system(size: 34, weight: .bold))
             .foregroundColor(.black)
     }
+    
+    static func makeSubTitle(subTitle: String) -> some View {
+        Text(subTitle)
+            .font(.system(size: 16, weight: .medium))
+            .foregroundColor(Color.subTitleColor)
+    }
 }

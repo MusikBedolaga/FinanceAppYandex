@@ -32,14 +32,18 @@ struct TabBarApp: View {
                 .tag(1)
             
             // Вкладка 3 - Счет
-            Text("Экран счета")
+            NavigationStack {
+                MyAccountView()
+            }
                 .tabItem {
                     Label("Счет", systemImage: "wallet.pass.fill")
                 }
                 .tag(2)
             
             // Вкладка 4 - Статьи
-            Text("Экран статей")
+            NavigationStack {
+                MyArticlesView()
+            }
                 .tabItem {
                     Label("Статьи", systemImage: "list.bullet.rectangle")
                 }
@@ -52,6 +56,7 @@ struct TabBarApp: View {
                 }
                 .tag(4)
         }
+        .tabBarBackground(color: UIColor.white)
     }
 }
 
