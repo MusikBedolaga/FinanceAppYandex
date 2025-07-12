@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import CoreMotion
 
+
 struct MyAccountView: View {
     @StateObject var viewModel = MyAccountViewModel()
     @State private var isEditing = false

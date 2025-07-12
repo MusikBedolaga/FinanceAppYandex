@@ -7,7 +7,7 @@
 
 import AVFoundation
 
-final class PermissionService {
+actor PermissionService {
     static let shared = PermissionService()
     private init() {}
     

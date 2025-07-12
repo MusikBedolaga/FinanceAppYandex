@@ -18,7 +18,7 @@ struct MyArticlesView: View {
     @State private var isRecording = false
     
     private var filteredCategories: [Category] {
-        vm.filteredCategories(searchText: searchBarText)
+        vm.filteredCategories
     }
     
     var body: some View {
@@ -53,8 +53,11 @@ struct MyArticlesView: View {
         .background(Color.backgroundScreenColor)
         .navigationTitle("Мои статьи")
         .navigationBarTitleDisplayMode(.large)
+        .onChange(of: searchBarText) { newValue in
+            vm.searchCategories(searchText: newValue)
+        }
         .task {
-            await vm.loadCategories()
+            vm.loadCategories()
         }
         .onAppear {
             speechRecognizer.onResult = { recognizedText in

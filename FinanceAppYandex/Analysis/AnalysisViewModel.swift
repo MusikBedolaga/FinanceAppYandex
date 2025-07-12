@@ -2,66 +2,74 @@ import Foundation
 
 @MainActor
 final class AnalysisViewModel {
-    
     private var transactionService = TransactionsService.shared
-    private var originalTransactions: [Transaction] = []
-    
-    var transactions = [Transaction]()
+
+    var transactions: [Transaction] = []
     var direction: Direction
     var startDate: Date
     var endDate: Date
     var totalAmountForDate: Decimal = 0
     var onTransactionsUpdated: (() -> Void)?
     var sortOption: SortOptions = .none
-    
+
     init(direction: Direction) {
         self.direction = direction
         let (start, end) = Self.getDefaultTime()
-        startDate = start
-        endDate = end
-        
+        self.startDate = start
+        self.endDate = end
+
+        fetchTransactions()
+    }
+
+    func fetchTransactions() {
+        let direction = self.direction
+        let startDate = self.startDate
+        let endDate = self.endDate
+        let sortOption = self.sortOption
+        let service = self.transactionService
+
         Task {
-            await fetchTransactions()
+            let txs = await service.getFiltered(
+                direction: direction,
+                startDate: startDate,
+                endDate: endDate,
+                sortOption: sortOption
+            )
+            let total = await service.totalAmount(
+                direction: direction,
+                startDate: startDate,
+                endDate: endDate
+            )
+
+            await MainActor.run { [weak self] in
+                self?.transactions = txs
+                self?.totalAmountForDate = total
+                self?.onTransactionsUpdated?()
+            }
         }
     }
-    
-    func fetchTransactions() async {
-        let allTransactionForDate = await transactionService.get(from: startDate, to: endDate)
-        let filtered = allTransactionForDate.filter { $0.category.direction == self.direction }
-        
-        self.transactions = filtered
-        self.originalTransactions = filtered
-        
-        calculateTotalAmountForDate()
-        setOption(sortOption)
-        onTransactionsUpdated?()
-    }
-    
+
     func setStartTime(_ date: Date) {
         startDate = date
         if startDate > endDate {
             endDate = startDate
         }
-        Task {
-            await fetchTransactions()
-        }
+        fetchTransactions()
     }
-    
+
     func setFinishTime(_ date: Date) {
         endDate = date
         if endDate < startDate {
             startDate = endDate
         }
-        Task {
-            await fetchTransactions()
-        }
+        fetchTransactions()
     }
-    
+
     func updateSortOption(to option: SortOptions) {
         sortOption = option
-        setOption(option)
+        fetchTransactions()
     }
-    
+
     private static func getDefaultTime() -> (Date, Date) {
         let now = Date()
         let calendar = Calendar.current
@@ -69,20 +77,5 @@ final class AnalysisViewModel {
         let defaultStart = calendar.date(byAdding: .day, value: -30, to: defaultEnd)!
             .settingTime(hour: 0, minute: 0)!
         return (defaultStart, defaultEnd)
-    }
-    
-    private func calculateTotalAmountForDate() {
-        totalAmountForDate = transactions.reduce(0) { $0 + $1.amount}
-    }
-    
-    private func setOption(_ sortOption: SortOptions) {
-        switch (sortOption) {
-        case .date:
-            transactions.sort { $0.transactionDate < $1.transactionDate}
-        case .amount:
-            transactions.sort { $0.amount < $1.amount}
-        case .none:
-            transactions = originalTransactions
-        }
     }
 }

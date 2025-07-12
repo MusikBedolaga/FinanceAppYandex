@@ -8,27 +8,33 @@
 import Foundation
 import SwiftUI
 
-
+@MainActor
 final class MyArticlesViewModel: ObservableObject {
     @Published var categories: [Category] = []
-    
+    @Published var filteredCategories: [Category] = []
+
     private let categoriesService = CategoriesService()
-    private lazy var fuseSearch = FuseService()
-    
-    @MainActor
-    func loadCategories() async {
-        self.categories = await categoriesService.getAll()
-        
-        var categoriesName: [String] = categories.map { return $0.name }
-        
-        fuseSearch.updateData(categoriesName)
+
+    func loadCategories() {
+        Task {
+            let loadedCategories = await categoriesService.getAll()
+            await MainActor.run {
+                self.categories = loadedCategories
+                self.filteredCategories = loadedCategories
+            }
+            await categoriesService.updateFuseData(with: loadedCategories)
+        }
     }
-    
-    func filteredCategories(searchText: String) -> [Category] {
-        guard !searchText.isEmpty else { return categories }
-        let matches = fuseSearch.search(searchText)
-        return matches.compactMap { match in
-            categories.first(where: { $0.name == match.0 })
+
+    func searchCategories(searchText: String) {
+        Task {
+            let filtered = await categoriesService.searchCategories(all: categories, searchText: searchText)
+            await MainActor.run {
+                self.filteredCategories = filtered
+            }
         }
     }
 }
+
+
+

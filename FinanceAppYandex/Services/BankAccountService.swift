@@ -7,7 +7,7 @@
 
 import Foundation
 
-final class BankAccountsService {
+actor BankAccountsService {
     private var account: BankAccount = BankAccount(
         id: 1,
         userId: 1,

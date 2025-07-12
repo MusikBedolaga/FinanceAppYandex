@@ -2,6 +2,7 @@ import SwiftUI
 
 struct EditTransactionView: View {
     @Environment(\.dismiss) private var dismiss
+
     @StateObject private var viewModel: EditTransactionViewModel
     @State private var amountText: String = ""
     @State private var showCategoryPicker = false
@@ -10,24 +11,35 @@ struct EditTransactionView: View {
     @State private var isDateExpanded = false
     @State private var showValidationAlert = false
     @State private var validationMessage = ""
-    
+
     private let direction: Direction
     private let isEdit: Bool
 
-    init(direction: Direction, transaction: Transaction?) {
+    init(direction: Direction, transaction: Transaction? = nil) {
         self.direction = direction
-        if let transaction = transaction {
-            self._viewModel = StateObject(wrappedValue: EditTransactionViewModel(transaction: transaction, direction: direction))
-            self._amountText = State(initialValue: "\(transaction.amount)")
-            isEdit = true
-        } else {
-            self._viewModel = StateObject(wrappedValue: EditTransactionViewModel(direction: direction))
-            isEdit = false
+        self.isEdit = transaction != nil
+        _viewModel = StateObject(wrappedValue: EditTransactionViewModel(direction: direction, transaction: transaction))
+        if let transaction {
+            _amountText = State(initialValue: "\(transaction.amount)")
         }
-        
     }
 
     var body: some View {
+        Group {
+            if let transaction = viewModel.transaction {
+                content(transaction: transaction)
+            } else {
+                ProgressView()
+            }
+        }
+        .onChange(of: viewModel.transaction?.id) { newID in
+            if let tx = viewModel.transaction, amountText.isEmpty {
+                amountText = "\(tx.amount)"
+            }
+        }
+    }
+
+    private func content(transaction: Transaction) -> some View {
         NavigationView {
             VStack(alignment: .leading, spacing: 12) {
                 Text(direction == .income ? "Мои доходы" : "Мои расходы")
@@ -35,15 +47,15 @@ struct EditTransactionView: View {
                     .padding(.horizontal)
 
                 VStack(spacing: 0) {
-                    categoryView
+                    categoryView(transaction: transaction)
                     divider
-                    amountView
+                    amountView(transaction: transaction)
                     divider
-                    dateView
+                    dateView(transaction: transaction)
                     divider
-                    timeView
+                    timeView(transaction: transaction)
                     divider
-                    descriptionView
+                    descriptionView(transaction: transaction)
                 }
                 .background(Color.white)
                 .cornerRadius(12)
@@ -51,11 +63,9 @@ struct EditTransactionView: View {
                 .padding(.top, 10)
                 .shadow(color: Color.black.opacity(0.05), radius: 4, y: 2)
 
-                if isEdit { deleteTransactionView }
+                if isEdit { deleteTransactionView() }
 
                 Spacer()
-                
-                
             }
             .background(Color(UIColor.systemGroupedBackground))
             .toolbar {
@@ -71,7 +81,7 @@ struct EditTransactionView: View {
                             return
                         }
                         if let amount = Decimal(string: amountText) {
-                            viewModel.transaction.amount = amount
+                            viewModel.transaction?.amount = amount
                             Task {
                                 if isEdit {
                                     await viewModel.saveTransaction()
@@ -88,10 +98,12 @@ struct EditTransactionView: View {
             .sheet(isPresented: $showCategoryPicker) {
                 CategoryPickerView(
                     direction: direction,
-                    selectedCategory: $viewModel.transaction.category
+                    selectedCategory: Binding(
+                        get: { viewModel.transaction?.category ?? transaction.category },
+                        set: { viewModel.transaction?.category = $0 }
+                    )
                 )
             }
-            
         }
         .navigationBarBackButtonHidden(true)
         .alert("Ошибка", isPresented: $showValidationAlert) {
@@ -105,15 +117,12 @@ struct EditTransactionView: View {
         Divider().padding(.leading, 16)
     }
 
-    private var categoryView: some View {
-        Button(
-            action: { showCategoryPicker.toggle() }) {
+    private func categoryView(transaction: Transaction) -> some View {
+        Button(action: { showCategoryPicker.toggle() }) {
             HStack {
-                Text("Статья")
-                    .foregroundColor(.black) // Изменить
+                Text("Статья").foregroundColor(.black)
                 Spacer()
-                Text(viewModel.transaction.category.name)
-                    .foregroundColor(.gray)
+                Text(transaction.category.name).foregroundColor(.gray)
                 Image(systemName: "chevron.right").foregroundColor(.gray.opacity(0.5))
             }
             .font(.system(size: 17))
@@ -121,7 +130,7 @@ struct EditTransactionView: View {
         }
     }
 
-    private var amountView: some View {
+    private func amountView(transaction: Transaction) -> some View {
         HStack {
             Text("Сумма")
             Spacer()
@@ -132,23 +141,22 @@ struct EditTransactionView: View {
                 .onChange(of: amountText) { newValue in
                     amountText = viewModel.sanitize(newValue)
                 }
-            Text(viewModel.transaction.account.currency).foregroundColor(.gray)
+            Text(transaction.account.currency).foregroundColor(.gray)
         }
         .font(.system(size: 17))
         .padding()
     }
 
-    private var dateView: some View {
+    private func dateView(transaction: Transaction) -> some View {
         VStack {
             HStack {
-                Text("Дата")
-                    .foregroundColor(.black)
+                Text("Дата").foregroundColor(.black)
                 Spacer()
                 Button(action: { withAnimation { isDateExpanded.toggle() } }) {
-                    Text(viewModel.transaction.transactionDate.formatted(.dateTime.day().month(.wide)))
+                    Text(transaction.transactionDate.formatted(.dateTime.day().month(.wide)))
                         .padding(6)
                         .padding(.horizontal, 8)
-                        .background(Color.customGreen.opacity(0.2))
+                        .background(Color.green.opacity(0.2))
                         .foregroundColor(.black)
                         .cornerRadius(8)
                 }
@@ -159,13 +167,16 @@ struct EditTransactionView: View {
             if isDateExpanded {
                 DatePicker(
                     "",
-                    selection: $viewModel.transaction.transactionDate,
+                    selection: Binding(
+                        get: { viewModel.transaction?.transactionDate ?? transaction.transactionDate },
+                        set: { viewModel.transaction?.transactionDate = $0 }
+                    ),
                     in: ...Date(),
                     displayedComponents: .date
                 )
                 .datePickerStyle(.graphical)
                 .labelsHidden()
-                .accentColor(Color.customGreen)
+                .accentColor(Color.green)
                 .padding(.horizontal)
                 .background(Color.white)
                 .cornerRadius(12)
@@ -176,17 +187,15 @@ struct EditTransactionView: View {
         }
     }
 
-    private var timeView: some View {
+    private func timeView(transaction: Transaction) -> some View {
         HStack {
             Text("Время")
             Spacer()
-            Button(action: {
-                showTimePicker = true
-            }) {
-                Text(viewModel.transaction.transactionDate.formatted(date: .omitted, time: .shortened))
+            Button(action: { showTimePicker = true }) {
+                Text(transaction.transactionDate.formatted(date: .omitted, time: .shortened))
                     .padding(6)
                     .padding(.horizontal, 8)
-                    .background(Color.customGreen.opacity(0.2))
+                    .background(Color.green.opacity(0.2))
                     .foregroundColor(.black)
                     .cornerRadius(8)
             }
@@ -197,14 +206,16 @@ struct EditTransactionView: View {
             VStack {
                 DatePicker(
                     "",
-                    selection: $viewModel.transaction.transactionDate,
+                    selection: Binding(
+                        get: { viewModel.transaction?.transactionDate ?? transaction.transactionDate },
+                        set: { viewModel.transaction?.transactionDate = $0 }
+                    ),
                     displayedComponents: .hourAndMinute
                 )
                 .datePickerStyle(.wheel)
                 .labelsHidden()
-                .accentColor(Color.customGreen)
+                .accentColor(Color.green)
                 .padding()
-
                 Button("Готово") { showTimePicker = false }
                     .foregroundColor(.purple)
                     .padding()
@@ -213,16 +224,16 @@ struct EditTransactionView: View {
         }
     }
 
-    private var descriptionView: some View {
+    private func descriptionView(transaction: Transaction) -> some View {
         TextField("Комментарий", text: Binding(
-            get: { viewModel.transaction.comment ?? "" },
-            set: { viewModel.transaction.comment = $0 }
+            get: { viewModel.transaction?.comment ?? "" },
+            set: { viewModel.transaction?.comment = $0 }
         ))
         .font(.system(size: 17))
         .padding()
     }
 
-    private var deleteTransactionView: some View {
+    private func deleteTransactionView() -> some View {
         Button(action: {
             Task {
                 await viewModel.deleteTransaction()
@@ -242,6 +253,8 @@ struct EditTransactionView: View {
         }
     }
 }
+
+
 
 
 
