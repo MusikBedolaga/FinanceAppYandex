@@ -7,15 +7,18 @@ final class AnalysisVC: UIViewController {
     private let direction: Direction
     private lazy var vm = AnalysisViewModel(direction: direction)
     private var calendarHostingController: UIHostingController<CalendarDatePicker>?
-
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        updateDateFields()
-    }
+    private var spinner: UIActivityIndicatorView?
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupView()
+        setupVMCallbacks()
+        vm.fetchTransactions()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        updateDateFields()
     }
 
     init(direction: Direction) {
@@ -54,6 +57,14 @@ final class AnalysisVC: UIViewController {
 
         analysisMainView.setupOperationTable(dataSource: self, delegate: self)
 
+        analysisMainView.onSortChanged = { [weak self] sortOption in
+            guard let self else { return }
+            self.vm.updateSortOption(to: sortOption)
+            self.analysisMainView.operationTable.reloadData()
+        }
+    }
+
+    private func setupVMCallbacks() {
         vm.onTransactionsUpdated = { [weak self] in
             guard let self else { return }
             self.analysisMainView.operationTable.reloadData()
@@ -61,10 +72,21 @@ final class AnalysisVC: UIViewController {
             self.analysisMainView.setAmount("\(amount)")
         }
 
-        analysisMainView.onSortChanged = { [weak self] sortOption in
+        vm.onLoadingChanged = { [weak self] isLoading in
             guard let self else { return }
-            self.vm.updateSortOption(to: sortOption)
-            self.analysisMainView.operationTable.reloadData()
+            if isLoading {
+                self.showSpinner()
+            } else {
+                self.hideSpinner()
+            }
+        }
+
+        vm.onError = { [weak self] message in
+            guard let self else { return }
+            self.hideSpinner()
+            let alert = UIAlertController(title: "Ошибка", message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self.present(alert, animated: true)
         }
     }
 
@@ -114,6 +136,28 @@ final class AnalysisVC: UIViewController {
         analysisMainView.collapseCalendar(animated: true)
     }
 
+    private func showSpinner() {
+        if spinner == nil {
+            let spinner = UIActivityIndicatorView(style: .large)
+            spinner.color = .purple
+            spinner.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(spinner)
+            NSLayoutConstraint.activate([
+                spinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                spinner.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            ])
+            self.spinner = spinner
+        }
+        spinner?.startAnimating()
+        view.isUserInteractionEnabled = false
+    }
+
+    private func hideSpinner() {
+        spinner?.stopAnimating()
+        spinner?.removeFromSuperview()
+        spinner = nil
+        view.isUserInteractionEnabled = true
+    }
 
     private func format(date: Date) -> String {
         let formatter = DateFormatter()

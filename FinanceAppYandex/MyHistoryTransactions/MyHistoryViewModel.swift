@@ -22,8 +22,10 @@ final class MyHistoryViewModel: ObservableObject {
     @Published var totalAmountForDate: Decimal = 0
     @Published var transactions: [Transaction] = []
     @Published var sortOption: SortOptions = .none
+    @Published var isLoading: Bool = false
+    @Published var alertMessage: String? = nil
     
-    private let transactionService = TransactionsService.shared
+    private var transactionsService: TransactionsService?
     private var direction: Direction
     private var originalTransactions: [Transaction] = []
 
@@ -32,20 +34,50 @@ final class MyHistoryViewModel: ObservableObject {
         let (start, end) = Self.getDefaultTime()
         self.startDate = start
         self.endDate = end
-        
-        Task {
-            await fetchTransactions()
-        }
     }
     
     func fetchTransactions() async {
-        let allTransactionForDate = await transactionService.get(from: startDate, to: endDate)
-        let filtered = allTransactionForDate.filter { $0.category.direction == self.direction }
         
-        self.originalTransactions = filtered
-        self.transactions = filtered
-        setOption(sortOption)
-        calculateTotalAmountForDate()
+        if transactionsService == nil {
+            guard
+                let baseURL = APIKeysStorage.shared.getBaseURL(),
+                let token = APIKeysStorage.shared.getToken()
+            else {
+                self.alertMessage = "Нет данных для подключения к API"
+                return
+            }
+            let network = NetworkService(baseURL: baseURL, token: token, session: .shared)
+            self.transactionsService = TransactionsService(network: network)
+        }
+        
+        isLoading = true
+        
+        defer { isLoading = false }
+        
+        guard let transactionsService else {
+            alertMessage = "Service not initialized"
+            transactions = []
+            return
+        }
+        
+        do {
+            let allTransactionForDate = try await transactionsService.get(from: startDate, to: endDate)
+            let filtered = allTransactionForDate.filter { $0.category.direction == self.direction }
+            self.originalTransactions = filtered
+            self.transactions = filtered
+            setOption(sortOption)
+            calculateTotalAmountForDate()
+        } catch {
+            print("Ошибка при получении транзакций:", error)
+            if let decodingError = error as? DecodingError {
+                print("Decoding error: \(decodingError)")
+            }
+            self.alertMessage = error.localizedDescription
+            self.transactions = []
+            return
+        }
+        
+        
     }
     
     func setStartTime(_ date: Date) {
@@ -95,6 +127,10 @@ final class MyHistoryViewModel: ObservableObject {
         case .none:
             transactions = originalTransactions
         }
+    }
+    
+    func dismissAlert() {
+        alertMessage = nil
     }
 }
 

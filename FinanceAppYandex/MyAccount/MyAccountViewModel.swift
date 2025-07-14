@@ -14,28 +14,77 @@ final class MyAccountViewModel: ObservableObject {
     @Published var editingBalance: String = ""
     @Published var editingCurrency: String = ""
     @Published private(set) var isLoading: Bool = false
+    @Published var alertMessage: String? = nil
     
-    private var bankAccountService = BankAccountsService()
+    private var bankAccountService: BankAccountsService?
     
     var formatedBalance: String {
         guard let account = bankAccount else { return "0 $" }
-        return "\(account.balance) \(account.currency)"
+        return "\(account.balance) \(account.currencySymbol)"
     }
     
-    init() {
-        Task {
-            let account = await bankAccountService.get()
+    func loadBankAccount() async {
+        if bankAccountService == nil {
+            guard
+                let baseURL = APIKeysStorage.shared.getBaseURL(),
+                let token = APIKeysStorage.shared.getToken()
+            else {
+                self.alertMessage = "Нет данных для подключения к API"
+                return
+            }
+            let network = NetworkService(baseURL: baseURL, token: token, session: .shared)
+            self.bankAccountService = BankAccountsService(network: network)
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+                
+        guard let bankAccountService else {
+            alertMessage = "Service not initialized"
+            return
+        }
+        
+        do {
+            let account = try await bankAccountService.get()
             await MainActor.run {
                 self.bankAccount = account
                 self.editingBalance = String(describing: account.balance)
-                self.editingCurrency = account.currency
+                self.editingCurrency = account.currencySymbol
             }
+        } catch {
+            self.alertMessage = error.localizedDescription
+            return
         }
     }
     
+    func refresh() {
+        Task {
+            isLoading = true
+            defer { isLoading = false }
+
+            guard let bankAccountService = bankAccountService else { return }
+            do {
+                let updatedAccount = try await bankAccountService.get()
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                await MainActor.run {
+                    withAnimation {
+                        self.bankAccount = updatedAccount
+                        self.editingBalance = String(describing: updatedAccount.balance)
+                        self.editingCurrency = updatedAccount.currencySymbol
+                    }
+                }
+            } catch {
+                self.alertMessage = error.localizedDescription
+            }
+        }
+    }
+
     func saveChanges() async {
+        isLoading = true
+        defer { isLoading = false }
+        guard let bankAccountService = bankAccountService else { return }
         guard let account = bankAccount else { return }
-        
+
         let updatedBanckAccount = BankAccount(
             id: account.id,
             userId: account.userId,
@@ -45,29 +94,13 @@ final class MyAccountViewModel: ObservableObject {
             createdAt: account.createdAt,
             updatedAt: Date()
         )
-        
-        await bankAccountService.update(account: updatedBanckAccount)
+        do {
+            self.bankAccount = try await bankAccountService.update(updatedBanckAccount)
+        } catch {
+            self.alertMessage = error.localizedDescription
+        }
+    }
 
-        await MainActor.run {
-            self.bankAccount = updatedBanckAccount
-        }
-    }
-    
-    func refresh() {
-        isLoading = true
-        Task {
-            let updatedAccount = await bankAccountService.get()
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            await MainActor.run {
-                withAnimation {
-                    self.bankAccount = updatedAccount
-                    self.editingBalance = String(describing: updatedAccount.balance)
-                    self.editingCurrency = updatedAccount.currency
-                    self.isLoading = false
-                }
-            }
-        }
-    }
     
     func filterBalanceInput(_ input: String) -> String {
         let allowedCharacters = CharacterSet(charactersIn: "0123456789.")
@@ -95,5 +128,9 @@ final class MyAccountViewModel: ObservableObject {
         }
 
         return filtered
+    }
+    
+    func dismissAlert() {
+        alertMessage = nil
     }
 }

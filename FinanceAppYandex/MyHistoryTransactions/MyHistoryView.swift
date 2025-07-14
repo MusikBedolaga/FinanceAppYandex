@@ -1,10 +1,3 @@
-//
-//  MyHistoryView.swift
-//  FinanceAppYandex
-//
-//  Created by Муса Зарифянов on 16.06.2025.
-//
-
 import SwiftUI
 
 struct MyHistoryView: View {
@@ -20,44 +13,72 @@ struct MyHistoryView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            titleScreen
-            filterView
-            operationListView
-            sortOptionView
-            Spacer()
-        }
-        .padding()
-        .background(Color(UIColor.systemGroupedBackground))
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showAnalysis = true
-                } label: {
-                    Image(systemName: "doc")
-                        .tint(.purple)
+        ZStack {
+            VStack(alignment: .leading, spacing: 16) {
+                titleScreen
+                filterView
+                operationListView
+                sortOptionView
+                Spacer()
+            }
+            .padding()
+            .background(Color(UIColor.systemGroupedBackground))
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showAnalysis = true
+                    } label: {
+                        Image(systemName: "doc")
+                            .tint(.purple)
+                    }
                 }
             }
-        }
-        .background(
-            NavigationLink(
-                destination: AnalysisView(direction: self.direction),
-                isActive: $showAnalysis,
-                label: { EmptyView() }
+            .background(
+                NavigationLink(
+                    destination: AnalysisView(direction: self.direction),
+                    isActive: $showAnalysis,
+                    label: { EmptyView() }
+                )
+                .hidden()
             )
-            .hidden()
-        )
-        .onChange(of: viewModel.startDate) { _ in
-            Task {
+            .onChange(of: viewModel.startDate) { _ in
+                Task {
+                    await viewModel.fetchTransactions()
+                }
+            }
+            .onChange(of: viewModel.endDate) { _ in
+                Task {
+                    await viewModel.fetchTransactions()
+                }
+            }
+            .task {
                 await viewModel.fetchTransactions()
             }
-        }
-        .onChange(of: viewModel.endDate) { _ in
-            Task {
-                await viewModel.fetchTransactions()
+            .alert(
+                isPresented: Binding<Bool>(
+                    get: { viewModel.alertMessage != nil },
+                    set: { if !$0 { viewModel.dismissAlert() } }
+                )
+            ) {
+                Alert(
+                    title: Text("Ошибка"),
+                    message: Text(viewModel.alertMessage ?? "Неизвестная ошибка"),
+                    dismissButton: .default(Text("Ок")) { viewModel.dismissAlert() }
+                )
+            }
+            .animation(.default, value: viewModel.sortOption)
+            
+            if viewModel.isLoading {
+                ZStack {
+                    Color.black.opacity(0.1)
+                        .ignoresSafeArea()
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .scaleEffect(1.8)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .animation(.default, value: viewModel.sortOption)
     }
     
     private var titleScreen: some View {
@@ -68,7 +89,7 @@ struct MyHistoryView: View {
         VStack(spacing: 12) {
             DatePicker(
                 "Начало",
-                selection: Binding (
+                selection: Binding(
                     get: { viewModel.startDate },
                     set: { viewModel.setStartTime($0) }
                 ),
@@ -110,7 +131,6 @@ struct MyHistoryView: View {
                                 .transition(.opacity)
                         }
                     }
-                    
                 }
             }
         }
@@ -137,6 +157,7 @@ struct MyHistoryView: View {
                 Text(option.rawValue).tag(option)
             }
         }
+        .pickerStyle(.segmented)
     }
 }
 

@@ -22,33 +22,45 @@ struct MyArticlesView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            SearchBarApp(text: $searchBarText) {
-                // Обработка микро
-                Task {
-                    if isRecording {
-                        speechRecognizer.stopRecording()
-                        isRecording = false
-                    } else {
-                        let granted = await PermissionService.shared.requestMicrophonePermission()
-                        if !granted {
-                            showMicAlert = true
+        ZStack {
+            VStack(alignment: .leading, spacing: 16) {
+                SearchBarApp(text: $searchBarText) {
+                    Task {
+                        if isRecording {
+                            speechRecognizer.stopRecording()
+                            isRecording = false
                         } else {
-                            do {
-                                try speechRecognizer.startRecording()
-                                isRecording = true
-                            } catch {
-                                //TODO: показать норм ошибку (сервис ошибок)
-                                print(error.localizedDescription)
+                            let granted = await PermissionService.shared.requestMicrophonePermission()
+                            if !granted {
+                                showMicAlert = true
+                            } else {
+                                do {
+                                    try speechRecognizer.startRecording()
+                                    isRecording = true
+                                } catch {
+                                    //TODO: показать норм ошибку (сервис ошибок)
+                                    print(error.localizedDescription)
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            listArticles
+                listArticles
+                
+                Spacer()
+            }
             
-            Spacer()
+            if vm.isLoading {
+                ZStack {
+                    Color.black.opacity(0.1)
+                        .ignoresSafeArea()
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .scaleEffect(1.8)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
         .background(Color.backgroundScreenColor)
         .navigationTitle("Мои статьи")
@@ -57,7 +69,7 @@ struct MyArticlesView: View {
             vm.searchCategories(searchText: newValue)
         }
         .task {
-            vm.loadCategories()
+            await vm.loadCategories()
         }
         .onAppear {
             speechRecognizer.onResult = { recognizedText in
@@ -67,15 +79,15 @@ struct MyArticlesView: View {
         .onTapGesture {
             UIApplication.shared.endEditing(true)
         }
-        .alert("Нет доступа к микрофону", isPresented: $showMicAlert) {
-            Button("OK", role: .cancel) { }
-            Button("Открыть настройки") {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
-                }
-            }
-        } message: {
-            Text("Пожалуйста, разрешите доступ к микрофону в настройках, чтобы пользоваться голосовым поиском.")
+        .alert(isPresented: Binding(
+            get: { vm.alertMessage != nil },
+            set: { if !$0 { vm.dismissAlert() } }
+        )) {
+            Alert(
+                title: Text("Ошибка"),
+                message: Text(vm.alertMessage ?? "Неизвестная ошибка"),
+                dismissButton: .default(Text("Ок")) { vm.dismissAlert() }
+            )
         }
     }
     
@@ -89,30 +101,33 @@ struct MyArticlesView: View {
                 .font(.caption)
                 .padding(.leading)
             
-            VStack {
-                if filteredCategories.isEmpty {
-                    Text("Ничего не найдено")
-                        .foregroundColor(.gray)
-                        .padding()
-                        .transition(.opacity)
-                } else {
-                    ForEach(filteredCategories, id: \.id) { category in
-                        MyArticlesCellView(category: category)
-                            .transition(.move(edge: .leading).combined(with: .opacity))
-                        if category.id != filteredCategories.last?.id {
-                            Divider().padding(.leading, 56)
+            ScrollView {
+                VStack(spacing: 0) {
+                    if filteredCategories.isEmpty {
+                        Text("Ничего не найдено")
+                            .foregroundColor(.gray)
+                            .padding()
+                            .transition(.opacity)
+                    } else {
+                        ForEach(filteredCategories, id: \.id) { category in
+                            MyArticlesCellView(category: category)
+                                .transition(.move(edge: .leading).combined(with: .opacity))
+                            if category.id != filteredCategories.last?.id {
+                                Divider().padding(.leading, 56)
+                            }
                         }
                     }
                 }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(.white)
+                .cornerRadius(10)
+                .animation(.easeInOut, value: searchBarText)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(.white)
-            .cornerRadius(10)
-            .animation(.easeInOut, value: searchBarText)
         }
         .padding(.horizontal, 14)
     }
+
 
 }
 

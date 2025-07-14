@@ -47,9 +47,21 @@ struct TransactionsListView: View {
             NavigationLink(destination: MyHistoryView(direction: direction), isActive: $isShowingHistory) {
                 EmptyView()
             }
+            
+            if viewModel.isLoading {
+                ZStack {
+                    Color.black.opacity(0.1)
+                        .ignoresSafeArea()
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .scaleEffect(1.8)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         })
         .task {
             await viewModel.loadTransactions(for: direction)
+            await viewModel.loadCurrency()
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -69,6 +81,16 @@ struct TransactionsListView: View {
         }) {
             EditTransactionView(direction: direction, transaction: nil)
         }
+        .alert(isPresented: Binding(
+            get: { viewModel.alertMessage != nil },
+            set: { if !$0 { viewModel.dismissAlert() } }
+        )) {
+            Alert(
+                title: Text("Ошибка"),
+                message: Text(viewModel.alertMessage ?? "Неизвестная ошибка"),
+                dismissButton: .default(Text("Ок")) { viewModel.dismissAlert() }
+            )
+        }
     }
     
     private var titleScreen: some View {
@@ -83,7 +105,7 @@ struct TransactionsListView: View {
             
             Spacer()
             
-            Text("\(totalAmount.formatted(.number.grouping(.automatic))) $")
+            Text("\(totalAmount.formatted(.number.grouping(.automatic))) \(viewModel.currency)")
         }
         .padding()
         .frame(width: 370, height: 44)

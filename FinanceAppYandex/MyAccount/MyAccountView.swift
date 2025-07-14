@@ -58,9 +58,23 @@ struct MyAccountView: View {
                     .transition(.move(edge: .bottom))
                     .animation(.spring(), value: showCurrencyPicker)
             }
+            
+            if viewModel.isLoading {
+                ZStack {
+                    Color.black.opacity(0.1)
+                        .ignoresSafeArea()
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .scaleEffect(1.8)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
         .onAppear {
             selectedCurrency = currencyForSymbol(viewModel.editingCurrency)
+        }
+        .task {
+            await viewModel.loadBankAccount()
         }
         .onChange(of: detector.isShaking) { newValue in
             guard newValue else { return }
@@ -75,6 +89,16 @@ struct MyAccountView: View {
             if newValue {
                 hideKeyboard()
             }
+        }
+        .alert(isPresented: Binding(
+            get: { viewModel.alertMessage != nil },
+            set: { if !$0 { viewModel.dismissAlert() } }
+        )) {
+            Alert(
+                title: Text("Ошибка"),
+                message: Text(viewModel.alertMessage ?? "Неизвестная ошибка"),
+                dismissButton: .default(Text("Ок")) { viewModel.dismissAlert() }
+            )
         }
     }
 

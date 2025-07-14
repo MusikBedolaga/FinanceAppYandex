@@ -67,7 +67,7 @@ struct TransactionCellView: View {
                 .font(.system(size: 17, weight: .medium))
                 .foregroundColor(.black)
             
-            Text(transaction.account.currency)
+            Text(transaction.account.currencySymbol)
                 .font(.system(size: 17, weight: .regular))
                 .foregroundColor(.black)
             

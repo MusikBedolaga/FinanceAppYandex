@@ -9,19 +9,22 @@ import Foundation
 
 
 actor CategoriesService {
-    private var fuseSearch = FuseService()
     
-    func getAll() async -> [Category] {
-        return [
-            Category(id: 1, name: "Зарплата", emoji: "💵", isIncome: true),
-            Category(id: 2, name: "Лечение зубов", emoji: "🦷", isIncome: false),
-            Category(id: 3, name: "Продукты", emoji: "🧺", isIncome: false)
-        ]
+    private var fuseSearch = FuseService()
+    let network: NetworkService
+    
+    init(network: NetworkService) {
+        self.network = network
+    }
+    
+    func getAll() async throws -> [Category] {
+        try await network.request(endpoint: "categories")
     }
 
-    func getIncomeOrOutcome(direction: Direction) async -> [Category] {
-        let allCategories = await getAll()
-        return allCategories.filter { $0.direction == direction }
+    func getIncomeOrOutcome(direction: Direction) async throws -> [Category] {
+        let isIncome = direction == .income ? true : false
+        let categories: [Category] = try await network.request(endpoint: "categories/type/\(isIncome)")
+        return categories
     }
     
     func updateFuseData(with categories: [Category]) {
@@ -37,4 +40,3 @@ actor CategoriesService {
         }
     }
 }
-

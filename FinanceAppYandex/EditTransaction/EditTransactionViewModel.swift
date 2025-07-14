@@ -3,16 +3,25 @@ import Foundation
 @MainActor
 final class EditTransactionViewModel: ObservableObject {
     @Published var transaction: Transaction?
-    @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published private(set) var isLoading: Bool = false
+    @Published var alertMessage: String? = nil
 
-    private let transactionService = TransactionsService.shared
+    private let transactionService: TransactionsService
     private let direction: Direction
 
-    /// Для новой или существующей транзакции.
-    /// Если transaction == nil, загрузит дефолтную асинхронно.
     init(direction: Direction, transaction: Transaction? = nil) {
         self.direction = direction
+
+        guard
+            let baseURL = APIKeysStorage.shared.getBaseURL(),
+            let token = APIKeysStorage.shared.getToken()
+        else {
+            fatalError("Нет данных для подключения к API")
+        }
+        let network = NetworkService(baseURL: baseURL, token: token, session: .shared)
+        self.transactionService = TransactionsService(network: network)
+
         self.transaction = transaction
         if transaction == nil {
             Task { await loadDefaultTransaction() }
@@ -22,34 +31,53 @@ final class EditTransactionViewModel: ObservableObject {
     private func loadDefaultTransaction() async {
         isLoading = true
         defer { isLoading = false }
-        let transaction: Transaction
-        if direction == .income {
-            transaction = await transactionService.defaultTransactionIncome()
-        } else {
-            transaction = await transactionService.defaultTransactionOutcome()
+        do {
+            if direction == .income {
+                transaction = try await transactionService.defaultTransactionIncome()
+            } else {
+                transaction = try await transactionService.defaultTransactionOutcome()
+            }
+        } catch {
+            errorMessage = "Не удалось создать шаблон транзакции: \(error.localizedDescription)"
         }
-        self.transaction = transaction
     }
 
     func addTransaction() async {
         guard let transaction else { return }
         isLoading = true
         defer { isLoading = false }
-        await transactionService.add(transaction)
+        do {
+            let request = TransactionRequest(from: transaction)
+            _ = try await transactionService.add(request)
+            alertMessage = "Транзакция успешно добавлена"
+        } catch {
+            errorMessage = "Ошибка при добавлении: \(error.localizedDescription)"
+        }
     }
 
     func saveTransaction() async {
         guard let transaction else { return }
         isLoading = true
         defer { isLoading = false }
-        await transactionService.update(transaction)
+        do {
+            let request = TransactionRequest(from: transaction)
+            _ = try await transactionService.update(id: transaction.id, with: request)
+            alertMessage = "Транзакция успешно обновлена"
+        } catch {
+            errorMessage = "Ошибка при сохранении: \(error.localizedDescription)"
+        }
     }
 
     func deleteTransaction() async {
         guard let transaction else { return }
         isLoading = true
         defer { isLoading = false }
-        await transactionService.delete(id: transaction.id)
+        do {
+            try await transactionService.delete(id: transaction.id)
+            alertMessage = "Транзакция удалена"
+        } catch {
+            errorMessage = "Ошибка при удалении: \(error.localizedDescription)"
+        }
     }
 
     func sanitize(_ input: String) -> String {
@@ -78,31 +106,69 @@ final class EditTransactionViewModel: ObservableObject {
         }
         return nil
     }
-}
 
+    func dismissAlert() {
+        alertMessage = nil
+    }
+}
 
 
 
 @MainActor
 final class CategoryPickerViewModel: ObservableObject {
     @Published var categoies: [Category] = []
+    @Published var isLoading: Bool = false
+    @Published var alertMessage: String? = nil
     
     private let direction: Direction
-    private let categoryService = CategoriesService()
+    private var categoryService: CategoriesService?
     
     init(direction: Direction) {
         self.direction = direction
     }
 
     func fetch() async {
-        let cats = await fetchCategories(direction: direction)
-        await MainActor.run {
-            self.categoies = cats
+        if categoryService == nil {
+            guard
+                let baseURL = APIKeysStorage.shared.getBaseURL(),
+                let token = APIKeysStorage.shared.getToken()
+            else {
+                self.alertMessage = "Нет данных для подключение к API"
+                return
+            }
+            let network = NetworkService(baseURL: baseURL, token: token, session: .shared)
+            self.categoryService = CategoriesService(network: network)
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        guard let _ = categoryService else {
+            alertMessage = "Service not initialized"
+            categoies = []
+            return
+        }
+        
+        do {
+            let cats = try await fetchCategories(direction: direction)
+            await MainActor.run {
+                self.categoies = cats
+            }
+        } catch {
+            self.alertMessage = error.localizedDescription
+            self.categoies = []
         }
     }
     
-    private func fetchCategories(direction: Direction) async -> [Category] {
-        await categoryService.getIncomeOrOutcome(direction: direction)
+    private func fetchCategories(direction: Direction) async throws -> [Category] {
+        guard let categoryService else {
+            throw NSError(domain: "CategoriesService is nil", code: 0)
+        }
+        return try await categoryService.getIncomeOrOutcome(direction: direction)
+    }
+    
+    func dismissAlert() {
+        alertMessage = nil
     }
 }
 

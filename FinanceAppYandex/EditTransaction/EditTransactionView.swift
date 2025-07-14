@@ -29,13 +29,32 @@ struct EditTransactionView: View {
             if let transaction = viewModel.transaction {
                 content(transaction: transaction)
             } else {
-                ProgressView()
+                if viewModel.isLoading {
+                    ZStack {
+                        Color.black.opacity(0.1)
+                            .ignoresSafeArea()
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .scaleEffect(1.8)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
         }
         .onChange(of: viewModel.transaction?.id) { newID in
             if let tx = viewModel.transaction, amountText.isEmpty {
                 amountText = "\(tx.amount)"
             }
+        }
+        .alert(isPresented: Binding(
+            get: { viewModel.alertMessage != nil },
+            set: { if !$0 { viewModel.dismissAlert() } }
+        )) {
+            Alert(
+                title: Text("Ошибка"),
+                message: Text(viewModel.alertMessage ?? "Неизвестная ошибка"),
+                dismissButton: .default(Text("Ок")) { viewModel.dismissAlert() }
+            )
         }
     }
 
@@ -292,6 +311,27 @@ struct CategoryPickerView: View {
                 Button("Готово") { dismiss() }
                     .foregroundColor(.purple)
             }
+            
+            if viewModel.isLoading {
+                Color.black.opacity(0.1)
+                    .ignoresSafeArea()
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle())
+                    .scaleEffect(1.8)
+            }
+        }
+        .onAppear {
+            Task { await viewModel.fetch() }
+        }
+        .alert(isPresented: Binding(
+            get: { viewModel.alertMessage != nil },
+            set: { if !$0 { viewModel.dismissAlert() } }
+        )) {
+            Alert(
+                title: Text("Ошибка"),
+                message: Text(viewModel.alertMessage ?? "Неизвестная ошибка"),
+                dismissButton: .default(Text("Ок")) { viewModel.dismissAlert() }
+            )
         }
     }
 }

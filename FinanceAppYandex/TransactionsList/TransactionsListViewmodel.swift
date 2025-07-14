@@ -11,24 +11,84 @@ import SwiftUI
 @MainActor
 final class TransactionsListViewModel: ObservableObject {
     @Published var transactions: [Transaction] = []
+    @Published var isLoading: Bool = false
+    @Published var alertMessage: String? = nil
+    @Published var currency: String = " "
 
-    private let transactionsService = TransactionsService.shared
+    private var transactionsService: TransactionsService?
+    private var bankAccountService: BankAccountsService?
     
     func loadTransactions(for direction: Direction) async {
+        if transactionsService == nil {
+            guard
+                let baseURL = APIKeysStorage.shared.getBaseURL(),
+                let token = APIKeysStorage.shared.getToken()
+            else {
+                self.alertMessage = "Нет данных для подключения к API"
+                return
+            }
+            let network = NetworkService(baseURL: baseURL, token: token, session: .shared)
+            self.transactionsService = TransactionsService(network: network)
+        }
+        
+        isLoading = true
+        
+        defer { isLoading = false }
+        
+        guard let transactionsService else {
+            alertMessage = "Service not initialized"
+            transactions = []
+            return
+        }
+
         let calendar = Calendar.current
         let now = Date()
-            
         let startOfDay = calendar.startOfDay(for: now)
         let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay)!.addingTimeInterval(-1)
+        
+        do {
+            let allForToday = try await transactionsService.get(from: startOfDay, to: endOfDay)
+            let filtered = allForToday.filter { $0.category.direction == direction }
 
-        let allForToday = await transactionsService.get(from: startOfDay, to: endOfDay)
-        let filtered = allForToday.filter { $0.category.direction == direction }
-
-        await MainActor.run {
             withAnimation(.easeInOut) {
                 self.transactions = filtered
             }
+        } catch {
+            alertMessage = error.localizedDescription
+            self.transactions = []
         }
     }
+    
+    func loadCurrency() async {
+        if bankAccountService == nil {
+            guard
+                let baseURL = APIKeysStorage.shared.getBaseURL(),
+                let token = APIKeysStorage.shared.getToken()
+            else {
+                return
+            }
+            let network = NetworkService(baseURL: baseURL, token: token, session: .shared)
+            self.bankAccountService = BankAccountsService(network: network)
+        }
+
+        guard let bankAccountService else { return }
+
+        do {
+            let account = try await bankAccountService.get()
+            await MainActor.run {
+                self.currency = account.currencySymbol
+            }
+        } catch {
+            alertMessage = "Ошибка при получении валюты"
+            return
+        }
+    }
+
+    
+    func dismissAlert() {
+        alertMessage = nil
+    }
 }
+
+
 

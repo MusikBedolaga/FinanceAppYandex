@@ -2,49 +2,78 @@ import Foundation
 
 @MainActor
 final class AnalysisViewModel {
-    private var transactionService = TransactionsService.shared
+    private var transactionService: TransactionsService?
 
     var transactions: [Transaction] = []
     var direction: Direction
     var startDate: Date
     var endDate: Date
     var totalAmountForDate: Decimal = 0
-    var onTransactionsUpdated: (() -> Void)?
     var sortOption: SortOptions = .none
+
+    var onTransactionsUpdated: (() -> Void)?
+    var onLoadingChanged: ((Bool) -> Void)?
+    var onError: ((String) -> Void)?
 
     init(direction: Direction) {
         self.direction = direction
         let (start, end) = Self.getDefaultTime()
         self.startDate = start
         self.endDate = end
-
-        fetchTransactions()
     }
 
-    func fetchTransactions() {
+     func fetchTransactions() {
+        if transactionService == nil {
+            guard
+                let baseURL = APIKeysStorage.shared.getBaseURL(),
+                let token = APIKeysStorage.shared.getToken()
+            else {
+                self.onError?("Нет данных для подключения к API")
+                return
+            }
+            let network = NetworkService(baseURL: baseURL, token: token, session: .shared)
+            self.transactionService = TransactionsService(network: network)
+        }
+
+        guard let transactionService else {
+            self.onError?("Service not initialized")
+            transactions = []
+            return
+        }
+
         let direction = self.direction
         let startDate = self.startDate
         let endDate = self.endDate
         let sortOption = self.sortOption
-        let service = self.transactionService
+
+        self.onLoadingChanged?(true)
 
         Task {
-            let txs = await service.getFiltered(
-                direction: direction,
-                startDate: startDate,
-                endDate: endDate,
-                sortOption: sortOption
-            )
-            let total = await service.totalAmount(
-                direction: direction,
-                startDate: startDate,
-                endDate: endDate
-            )
+            defer {
+                Task { @MainActor in self.onLoadingChanged?(false) }
+            }
+            do {
+                let txs = try await transactionService.getFiltered(
+                    direction: direction,
+                    startDate: startDate,
+                    endDate: endDate,
+                    sortOption: sortOption
+                )
+                let total = try await transactionService.totalAmount(
+                    direction: direction,
+                    startDate: startDate,
+                    endDate: endDate
+                )
 
-            await MainActor.run { [weak self] in
-                self?.transactions = txs
-                self?.totalAmountForDate = total
-                self?.onTransactionsUpdated?()
+                await MainActor.run { [weak self] in
+                    self?.transactions = txs
+                    self?.totalAmountForDate = total
+                    self?.onTransactionsUpdated?()
+                }
+            } catch {
+                await MainActor.run { [weak self] in
+                    self?.onError?(error.localizedDescription)
+                }
             }
         }
     }

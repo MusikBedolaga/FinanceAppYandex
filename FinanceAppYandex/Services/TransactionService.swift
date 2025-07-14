@@ -8,126 +8,58 @@
 import Foundation
 
 actor TransactionsService {
-    private let bankAccount = BankAccount(
-        id: 1,
-        userId: 1,
-        name: "Основной счёт",
-        balance: Decimal(1000),
-        currency: "₽",
-        createdAt: Date(),
-        updatedAt: Date()
-    )
     
-    private let categories: [Category] = [
-        Category(id: 1, name: "Зарплата", emoji: "💼", isIncome: true),
-        Category(id: 2, name: "Фриланс", emoji: "🧑‍💻", isIncome: true),
-        Category(id: 3, name: "Лечение зубов", emoji: "🦷", isIncome: false),
-        Category(id: 4, name: "Продукты", emoji: "🧺", isIncome: false),
-        Category(id: 5, name: "Развлечения", emoji: "🎮", isIncome: false)
-    ]
     
-    private(set) var transactions: [Transaction] = []
+    private lazy var bankAccountService: BankAccountsService = {
+        BankAccountsService(network: self.network)
+    }()
+    private let network: NetworkService
     
-    static let shared = TransactionsService()
+    init(network: NetworkService) {
+        self.network = network
+    }
+    
+    struct EmptyResponse: Decodable {}
+    
+    func getAll() async throws -> [Transaction] {
+        try await network.request(endpoint: "transactions")
+    }
 
-    private init() {
-        let calendar = Calendar.current
-        let now = Date()
+    func get(from: Date, to: Date) async throws -> [Transaction] {
+        let account = try await bankAccountService.get()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let startDateStr = formatter.string(from: from)
+        let endDateStr = formatter.string(from: to)
+        let endpoint = "transactions/account/\(account.id)/period?startDate=\(startDateStr)&endDate=\(endDateStr)"
         
-        transactions = [
-            Transaction(
-                id: 1,
-                account: bankAccount,
-                category: categories[0],
-                amount: Decimal(100_000),
-                transactionDate: calendar.date(byAdding: .day, value: -3, to: now)!,
-                comment: "Зарплата за май",
-                createdAt: now,
-                updatedAt: now
-            ),
-            Transaction(
-                id: 2,
-                account: bankAccount,
-                category: categories[1],
-                amount: Decimal(25_000),
-                transactionDate: calendar.date(byAdding: .day, value: -40, to: now)!,
-                comment: "Проект от клиента",
-                createdAt: now,
-                updatedAt: now
-            ),
-            Transaction(
-                id: 6,
-                account: bankAccount,
-                category: categories[1],
-                amount: Decimal(5_000),
-                transactionDate: now,
-                comment: "Премия",
-                createdAt: now,
-                updatedAt: now
-            ),
-            Transaction(
-                id: 3,
-                account: bankAccount,
-                category: categories[2],
-                amount: Decimal(5_000),
-                transactionDate: calendar.date(byAdding: .day, value: -2, to: now)!,
-                comment: "Стоматолог",
-                createdAt: now,
-                updatedAt: now
-            ),
-            Transaction(
-                id: 4,
-                account: bankAccount,
-                category: categories[3],
-                amount: Decimal(1_200),
-                transactionDate: calendar.date(byAdding: .day, value: -25, to: now)!,
-                comment: "Магнит",
-                createdAt: now,
-                updatedAt: now
-            ),
-            Transaction(
-                id: 5,
-                account: bankAccount,
-                category: categories[4],
-                amount: Decimal(1_800),
-                transactionDate: calendar.date(byAdding: .day, value: -60, to: now)!,
-                comment: "Steam игры",
-                createdAt: now,
-                updatedAt: now
-            ),
-            Transaction(
-                id: 7,
-                account: bankAccount,
-                category: categories[3],
-                amount: Decimal(700),
-                transactionDate: now,
-                comment: "Кафе",
-                createdAt: now,
-                updatedAt: now
-            )
-        ]
+        return try await network.request(endpoint: endpoint)
     }
+
     
-    func getAll() -> [Transaction] {
-        return transactions
+    func getById(by id: Int) async throws -> Transaction {
+        try await network.request(endpoint: "/transactions/\(id)")
     }
 
-    func get(from: Date, to: Date) async -> [Transaction] {
-        return transactions.filter { $0.transactionDate >= from && $0.transactionDate <= to }
+    func add(_ transaction: TransactionRequest) async throws -> Transaction {
+        print(transaction.categoryId)
+        return try await network.request(
+            endpoint: "transactions",
+            method: "POST",
+            body: transaction
+        )
     }
 
-    func add(_ transaction: Transaction) async {
-        guard !transactions.contains(where: { $0.id == transaction.id }) else { return }
-        transactions.append(transaction)
+    func update(id: Int, with transaction: TransactionRequest) async throws -> Transaction {
+        try await network.request(
+            endpoint: "transactions/\(id)",
+            method: "PUT",
+            body: transaction
+        )
     }
 
-    func update(_ transaction: Transaction) async {
-        guard let index = transactions.firstIndex(where: { $0.id == transaction.id }) else { return }
-        transactions[index] = transaction
-    }
-
-    func delete(id: Int) async {
-        transactions.removeAll { $0.id == id }
+    func delete(id: Int) async throws {
+        _ = try await network.request(endpoint: "transactions/\(id)", method: "DELETE") as EmptyResponse
     }
     
     func getFiltered(
@@ -135,7 +67,8 @@ actor TransactionsService {
         startDate: Date,
         endDate: Date,
         sortOption: SortOptions
-    ) async -> [Transaction] {
+    ) async throws -> [Transaction] {
+        let transactions = try await self.get(from: startDate, to: endDate)
         let filtered = transactions
             .filter { $0.transactionDate >= startDate && $0.transactionDate <= endDate }
             .filter { $0.category.direction == direction }
@@ -154,18 +87,24 @@ actor TransactionsService {
         direction: Direction,
         startDate: Date,
         endDate: Date
-    ) async -> Decimal {
+    ) async throws -> Decimal {
+        let transactions = try await self.get(from: startDate, to: endDate)
         let filtered = transactions
             .filter { $0.transactionDate >= startDate && $0.transactionDate <= endDate }
             .filter { $0.category.direction == direction }
         return filtered.reduce(0) { $0 + $1.amount }
     }
     
-    func defaultTransactionIncome() async -> Transaction {
+    
+    func defaultTransactionIncome() async throws -> Transaction {
+        let account: BankAccount = try await bankAccountService.get() ?? BankAccount(
+            id: 1, userId: 1, name: "Счет", balance: 0, currency: "₽", createdAt: Date(), updatedAt: Date()
+        )
+        let category = Category(id: 1, name: "Зарплата", emoji: "💼", isIncome: true)
         return Transaction(
-            id: Int.random(in: 0...1000),
-            account: bankAccount,
-            category: categories[0],
+            id: Int.random(in: 1000...9999),
+            account: account,
+            category: category,
             amount: 0,
             transactionDate: Date(),
             comment: nil,
@@ -173,12 +112,16 @@ actor TransactionsService {
             updatedAt: Date()
         )
     }
-    
-    func defaultTransactionOutcome() async -> Transaction {
+
+    func defaultTransactionOutcome() async throws -> Transaction {
+        let account: BankAccount = try await bankAccountService.get() ?? BankAccount(
+            id: 1, userId: 1, name: "Счет", balance: 0, currency: "₽", createdAt: Date(), updatedAt: Date()
+        )
+        let category = Category(id: 4, name: "Продукты", emoji: "🧺", isIncome: false)
         return Transaction(
-            id: Int.random(in: 0...1000),
-            account: bankAccount,
-            category: categories[4],
+            id: Int.random(in: 1000...9999),
+            account: account,
+            category: category,
             amount: 0,
             transactionDate: Date(),
             comment: nil,
@@ -187,3 +130,5 @@ actor TransactionsService {
         )
     }
 }
+
+struct EmptyResponse: Decodable {}
