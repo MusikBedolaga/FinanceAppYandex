@@ -7,7 +7,9 @@ enum NetworkClientError: Error {
     case decodingError(Error)
     case transportError(Error)
     case missingData
+    case emptyBodyExpectedNonEmptyResponse
 }
+
 
 actor NetworkService {
     
@@ -42,15 +44,12 @@ actor NetworkService {
                 try JSONEncoder().encode(body)
             }.value
             if let jsonString = String(data: encodedBody, encoding: .utf8) {
-                print("REQUEST BODY JSON:", jsonString)
+//                print("REQUEST BODY JSON:", jsonString)
             }
             request.httpBody = encodedBody
         } catch {
             throw NetworkClientError.encodingError(error)
         }
-
-        print("REQUEST: \(method) \(url.absoluteString)")
-        print("HEADERS:", request.allHTTPHeaderFields ?? [:])
 
         let (data, response): (Data, URLResponse)
         do {
@@ -87,6 +86,7 @@ actor NetworkService {
               headers: headers
           )
           
+          
           let (data, response): (Data, URLResponse)
           do {
               (data, response) = try await session.data(for: request)
@@ -97,8 +97,13 @@ actor NetworkService {
           guard let httpResponse = response as? HTTPURLResponse else {
               throw NetworkClientError.missingData
           }
+          
           guard 200..<300 ~= httpResponse.statusCode else {
               throw NetworkClientError.httpError(statusCode: httpResponse.statusCode, data: data)
+          }
+          
+          if data.isEmpty && httpResponse.statusCode == 204 {
+              throw NetworkClientError.emptyBodyExpectedNonEmptyResponse
           }
 
           return try await decode(Response.self, from: data)
