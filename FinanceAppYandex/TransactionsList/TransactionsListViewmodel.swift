@@ -11,7 +11,7 @@ import SwiftUI
 final class TransactionsListViewModel: ObservableObject {
     @Published var transactions: [Transaction] = []
 
-    private let transactionsService = TransactionsService()
+    private let transactionsService = TransactionsService.shared
     
     func loadTransactions(for direction: Direction) async {
         let calendar = Calendar.current
@@ -24,7 +24,9 @@ final class TransactionsListViewModel: ObservableObject {
         let filtered = allForToday.filter { $0.category.direction == direction }
 
         await MainActor.run {
-            self.transactions = filtered
+            withAnimation(.easeInOut) {
+                self.transactions = filtered
+            }
         }
     }
 }

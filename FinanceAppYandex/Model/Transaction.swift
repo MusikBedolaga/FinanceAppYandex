@@ -10,12 +10,12 @@ import Foundation
 
 struct Transaction: Codable {
     let id: Int
-    let account: BankAccount
-    let category: Category
-    let amount: Decimal
-    let transactionDate: Date
-    let comment: String?
+    var account: BankAccount
+    var category: Category
+    var amount: Decimal
+    var transactionDate: Date
+    var comment: String?
     let createdAt: Date
-    let updatedAt: Date
+    var updatedAt: Date
 }
 

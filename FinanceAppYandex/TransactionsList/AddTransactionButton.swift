@@ -9,11 +9,12 @@ import SwiftUI
 
 struct AddTransactionButton: View {
     @Binding var isPresented: Bool
+    var action: () -> Void
 
     var body: some View {
         Button(action: {
             isPresented = true
-            print("Переход на станицу добавления транзакции")
+            action()
         }) {
             Image(systemName: "plus")
                 .font(.system(size: 24, weight: .bold))
