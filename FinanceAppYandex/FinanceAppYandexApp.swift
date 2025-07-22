@@ -32,12 +32,16 @@ struct FinanceAppYandexApp: App {
     
     var body: some Scene {
         WindowGroup {
-            if splashFinished {
-                TabBarApp(modelContainer: container)
-                    .modelContainer(container)
-            } else {
-                SplashScreen(isFinished: $splashFinished)
+            ZStack {
+                if splashFinished {
+                    TabBarApp(modelContainer: container)
+                        .transition(.opacity)
+                } else {
+                    SplashScreen(isFinished: $splashFinished)
+                        .transition(.opacity)
+                }
             }
+            .animation(.easeInOut(duration: 0.4), value: splashFinished)
         }
     }
 }

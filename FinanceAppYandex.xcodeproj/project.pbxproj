@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3426FEBD2E2F221A009EEE0F /* Splash in Frameworks */ = {isa = PBXBuildFile; productRef = 3426FEBC2E2F221A009EEE0F /* Splash */; };
 		343511472E2B7F3300FAB18F /* Fuse in Frameworks */ = {isa = PBXBuildFile; productRef = 343511462E2B7F3300FAB18F /* Fuse */; };
 		3435114A2E2B811400FAB18F /* PieChart in Frameworks */ = {isa = PBXBuildFile; productRef = 343511492E2B811400FAB18F /* PieChart */; };
 		343511E82E2B826E00FAB18F /* PieChart in Frameworks */ = {isa = PBXBuildFile; productRef = 343511E72E2B826E00FAB18F /* PieChart */; };
@@ -59,6 +60,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3426FEBD2E2F221A009EEE0F /* Splash in Frameworks */,
 				3435114A2E2B811400FAB18F /* PieChart in Frameworks */,
 				343511E82E2B826E00FAB18F /* PieChart in Frameworks */,
 				343511472E2B7F3300FAB18F /* Fuse in Frameworks */,
@@ -135,6 +137,7 @@
 				343511492E2B811400FAB18F /* PieChart */,
 				343511E72E2B826E00FAB18F /* PieChart */,
 				3448E4262E2D13A200574199 /* Lottie */,
+				3426FEBC2E2F221A009EEE0F /* Splash */,
 			);
 			productName = FinanceAppYandex;
 			productReference = 349172A82DFB80F4001896DA /* FinanceAppYandex.app */;
@@ -610,6 +613,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		3426FEBC2E2F221A009EEE0F /* Splash */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 343511E62E2B826E00FAB18F /* XCLocalSwiftPackageReference "../../Utilities" */;
+			productName = Splash;
+		};
 		343511462E2B7F3300FAB18F /* Fuse */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 343511452E2B7F3300FAB18F /* XCRemoteSwiftPackageReference "fuse-swift" */;

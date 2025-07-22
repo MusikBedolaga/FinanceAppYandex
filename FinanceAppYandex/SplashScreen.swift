@@ -1,4 +1,5 @@
 import SwiftUI
+import Splash
 
 struct SplashScreen: View {
     @Binding var isFinished: Bool
@@ -7,7 +8,7 @@ struct SplashScreen: View {
     var body: some View {
         ZStack {
             Color.white.ignoresSafeArea()
-            
+
             if let url = URL(string: urlString) {
                 InitialLoadingView(url: url) {
                     isFinished = true
@@ -19,4 +20,3 @@ struct SplashScreen: View {
         }
     }
 }
-
