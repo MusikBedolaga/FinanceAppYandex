@@ -1,27 +1,22 @@
-//
-//  MyAccountView.swift
-//  FinanceAppYandex
-//
-//  Created by Муса Зарифянов on 22.06.2025.
-//
-
 import Foundation
 import SwiftUI
 import CoreMotion
 import SwiftData
-
+import Charts
 
 struct MyAccountView: View {
     @StateObject var viewModel: MyAccountViewModel
     @State private var isEditing = false
     @State private var showCurrencyPicker = false
     @State private var selectedCurrency = currencies[0]
+    @State private var selectedDate: Date?
+    @State private var selectedValue: Decimal?
     @FocusState private var balanceIsFocused: Bool
-    
     @State private var isBalanceHidden = false
     @State private var lastShakeTime: Date? = nil
     @StateObject private var detector = ShakeDetector()
-    
+    @State private var selectedRange: ChartRange = .daily
+
     init(modelContainer: ModelContainer) {
         _viewModel = StateObject(wrappedValue: MyAccountViewModel(modelContainer: modelContainer))
     }
@@ -36,6 +31,12 @@ struct MyAccountView: View {
                     titleScreen
                     balanceView
                     currencyView
+
+                    if !isEditing {
+                        chartRangePicker
+                        chartView
+                    }
+
                     Spacer()
                 }
                 .padding(.bottom, showCurrencyPicker ? 350 : 0)
@@ -58,12 +59,11 @@ struct MyAccountView: View {
             }
 
             if showCurrencyPicker {
-                
                 currencyPicker
                     .transition(.move(edge: .bottom))
                     .animation(.spring(), value: showCurrencyPicker)
             }
-            
+
             if viewModel.isLoading {
                 ZStack {
                     Color.black.opacity(0.1)
@@ -77,9 +77,10 @@ struct MyAccountView: View {
         }
         .onAppear {
             selectedCurrency = currencyForSymbol(viewModel.editingCurrency)
-        }
-        .task {
-            await viewModel.loadBankAccount()
+            Task {
+                await viewModel.loadBankAccount()
+                await viewModel.calculateStatisticsForAccounts()
+            }
         }
         .onChange(of: detector.isShaking) { newValue in
             guard newValue else { return }
@@ -95,6 +96,22 @@ struct MyAccountView: View {
                 hideKeyboard()
             }
         }
+        .onChange(of: selectedRange) { newValue in
+            Task {
+                switch newValue {
+                case .daily:
+                    await viewModel.calculateStatisticsForAccounts()
+                case .monthly:
+                    await viewModel.calculateMonthlyStatistics()
+                }
+                
+                await MainActor.run {
+                    withAnimation(.easeInOut(duration: 0.4)) {
+                        viewModel.selectedRange = newValue
+                    }
+                }
+            }
+        }
         .alert(isPresented: Binding(
             get: { viewModel.alertMessage != nil },
             set: { if !$0 { viewModel.dismissAlert() } }
@@ -106,7 +123,6 @@ struct MyAccountView: View {
             )
         }
     }
-
 
     private var refreshToolbarItem: some View {
         Group {
@@ -135,7 +151,6 @@ struct MyAccountView: View {
         .background(Color.backgroundScreenColor.shadow(radius: 8))
         .cornerRadius(16, corners: [.topLeft, .topRight])
     }
-
 
     private func toggleEditing() {
         if isEditing {
@@ -226,15 +241,103 @@ struct MyAccountView: View {
         }
     }
 
+    private var chartRangePicker: some View {
+        Picker("Диапазон", selection: $selectedRange) {
+            ForEach(ChartRange.allCases, id: \.self) { range in
+                Text(range.rawValue).tag(range)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal)
+    }
+
+    private var chartView: some View {
+        let data = selectedRange == .daily
+            ? viewModel.balanceStatistics
+            : viewModel.monthlyBalanceStatistics
+
+        return Chart {
+            ForEach(data.sorted(by: { $0.key < $1.key }), id: \.key) { item in
+                BarMark(
+                    x: .value("Date", item.key),
+                    y: .value("Balance", abs(item.value))
+                )
+                .foregroundStyle(item.value < 0 ? .orange : .green)
+                .annotation(position: .top, alignment: .center) {
+                    if selectedDate == item.key, let value = selectedValue {
+                        Text("\(value.formatted(.number.precision(.fractionLength(2))))")
+                            .font(.caption)
+                            .padding(5)
+                            .background(Color.white)
+                            .cornerRadius(5)
+                            .shadow(radius: 2)
+                    }
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .automatic) { value in
+                AxisValueLabel {
+                    if let date = value.as(Date.self) {
+                        if selectedRange == .daily {
+                            Text(date, format: .dateTime.day().month(.twoDigits))
+                        } else {
+                            Text(date, format: .dateTime.month().year(.twoDigits))
+                        }
+                    }
+                }
+            }
+        }
+        .chartYAxis {}
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                Rectangle().fill(Color.clear).contentShape(Rectangle())
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                let origin = geometry[proxy.plotAreaFrame].origin
+                                let locationX = value.location.x - origin.x
+
+                                if let date: Date = proxy.value(atX: locationX) {
+                                    let closest = data.keys.min(by: {
+                                        abs($0.timeIntervalSince(date)) < abs($1.timeIntervalSince(date))
+                                    })
+                                    if let closest = closest, let value = data[closest] {
+                                        selectedDate = closest
+                                        selectedValue = value
+                                    }
+                                }
+                            }
+                            .onEnded { _ in
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    selectedDate = nil
+                                    selectedValue = nil
+                                }
+                            }
+                    )
+            }
+        }
+        .transition(.opacity.combined(with: .move(edge: .bottom)))
+        .animation(.easeInOut(duration: 0.5), value: data)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
     private func currencyForSymbol(_ symbol: String) -> Currency {
         currencies.first { $0.symbol == symbol } ?? currencies[0]
     }
-    
+
     private func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 }
 
-//#Preview {
-//    MyAccountView(modelContainer: <#ModelContainer#>)
-//}
+#Preview {
+    let container = try! ModelContainer(
+        for: BankAccountStorage.self,
+        TransactionStorage.self,
+        CategoryStorage.self,
+        BackupOperationStorage.self
+    )
+    MyAccountView(modelContainer: container)
+}

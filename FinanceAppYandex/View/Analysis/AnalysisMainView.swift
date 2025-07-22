@@ -1,4 +1,5 @@
 import UIKit
+import PieChart
 
 final class AnalysisMainView: UIView {
     // MARK: - UI
@@ -34,6 +35,15 @@ final class AnalysisMainView: UIView {
     }()
     var onSortChanged: ((SortOptions) -> Void)?
     private var sortOption: SortOptions = .none
+    
+    private let pieChartView: PieChartView = {
+        let charts = PieChartView()
+        charts.translatesAutoresizingMaskIntoConstraints = false
+        charts.widthAnchor.constraint(equalToConstant: 200).isActive = true
+        charts.heightAnchor.constraint(equalToConstant: 200).isActive = true
+        charts.backgroundColor = .clear
+        return charts
+    }()
     
     let operationTable: UITableView = {
         let table = UITableView()
@@ -76,6 +86,13 @@ final class AnalysisMainView: UIView {
         operationTable.delegate = delegate
     }
     
+    func updatePieChart(transactions: [Transaction]) {
+        let entities = transactions.map { Entity(value: $0.amount, label: $0.category.name) }
+        pieChartView.entities = entities
+        
+        pieChartView.animateChartChange(to: entities)
+    }
+    
     // MARK: - Calendar Animations
     func expandCalendar(animated: Bool = true) {
         calendarContainerView.isHidden = false
@@ -111,7 +128,7 @@ final class AnalysisMainView: UIView {
     private func setupLayout() {
         backgroundColor = .systemGroupedBackground
         
-        [titleLabel, filterView, calendarContainerView, operationTable, sortButton].forEach { addSubview($0) }
+        [titleLabel, filterView, pieChartView, operationTable, sortButton, calendarContainerView].forEach { addSubview($0) }
 
         // titleLabel
         NSLayoutConstraint.activate([
@@ -141,11 +158,17 @@ final class AnalysisMainView: UIView {
             // Высота — только через calendarHeightConstraint!
         ])
         
+        // pieChartView
+        NSLayoutConstraint.activate([
+            pieChartView.centerXAnchor.constraint(equalTo: self.centerXAnchor),
+            pieChartView.topAnchor.constraint(equalTo: filterView.bottomAnchor, constant: 20)
+        ])
+        
         // operationTable
         NSLayoutConstraint.activate([
             operationTable.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
             operationTable.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
-            operationTable.topAnchor.constraint(equalTo: calendarContainerView.bottomAnchor, constant: 12),
+            operationTable.topAnchor.constraint(equalTo: pieChartView.bottomAnchor, constant: 12),
             operationTable.bottomAnchor.constraint(equalTo: sortButton.topAnchor, constant: -10)
         ])
         

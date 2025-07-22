@@ -73,6 +73,7 @@ final class AnalysisVC: UIViewController {
             self.analysisMainView.operationTable.reloadData()
             let amount = self.vm.totalAmountForDate
             self.analysisMainView.setAmount("\(amount)")
+            self.analysisMainView.updatePieChart(transactions: self.vm.transactions)
         }
 
         vm.onLoadingChanged = { [weak self] isLoading in
