@@ -129,11 +129,21 @@ final class AnalysisCell: UITableViewCell {
         ])
     }
     
-    func configure(with tx: Transaction) {
+    func configure(with tx: Transaction, totalAmount: Decimal) {
         emojiLabel.text = String(tx.category.emoji)
         titleLabel.text = tx.category.name
         subtitleLabel.text = tx.comment ?? "Нету"
-        percentLabel.text = "20%"
+        
+        let percent: String
+        if totalAmount > 0 {
+            let fraction = (tx.amount / totalAmount as NSDecimalNumber).doubleValue
+            let percentValue = Int(fraction * 100)
+            percent = "\(percentValue)%"
+        } else {
+            percent = "-"
+        }
+        percentLabel.text = percent
+        
         amountLabel.text = "\(NSDecimalNumber(decimal: tx.amount).intValue) ₽"
     }
     
