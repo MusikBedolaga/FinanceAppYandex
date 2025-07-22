@@ -7,7 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		347AA21B2E1741510036F794 /* Fuse in Frameworks */ = {isa = PBXBuildFile; productRef = 347AA21A2E1741510036F794 /* Fuse */; };
+		343511472E2B7F3300FAB18F /* Fuse in Frameworks */ = {isa = PBXBuildFile; productRef = 343511462E2B7F3300FAB18F /* Fuse */; };
+		3435114A2E2B811400FAB18F /* PieChart in Frameworks */ = {isa = PBXBuildFile; productRef = 343511492E2B811400FAB18F /* PieChart */; };
+		343511E82E2B826E00FAB18F /* PieChart in Frameworks */ = {isa = PBXBuildFile; productRef = 343511E72E2B826E00FAB18F /* PieChart */; };
+		3448E4272E2D13A200574199 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 3448E4262E2D13A200574199 /* Lottie */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,7 +59,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				347AA21B2E1741510036F794 /* Fuse in Frameworks */,
+				3435114A2E2B811400FAB18F /* PieChart in Frameworks */,
+				343511E82E2B826E00FAB18F /* PieChart in Frameworks */,
+				343511472E2B7F3300FAB18F /* Fuse in Frameworks */,
+				3448E4272E2D13A200574199 /* Lottie in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -77,12 +83,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		343511412E2B7EA500FAB18F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		3491729F2DFB80F4001896DA = {
 			isa = PBXGroup;
 			children = (
 				349172AA2DFB80F4001896DA /* FinanceAppYandex */,
 				349172BB2DFB80F5001896DA /* FinanceAppYandexTests */,
 				349172C52DFB80F5001896DA /* FinanceAppYandexUITests */,
+				343511412E2B7EA500FAB18F /* Frameworks */,
 				349172A92DFB80F4001896DA /* Products */,
 			);
 			sourceTree = "<group>";
@@ -117,7 +131,10 @@
 			);
 			name = FinanceAppYandex;
 			packageProductDependencies = (
-				347AA21A2E1741510036F794 /* Fuse */,
+				343511462E2B7F3300FAB18F /* Fuse */,
+				343511492E2B811400FAB18F /* PieChart */,
+				343511E72E2B826E00FAB18F /* PieChart */,
+				3448E4262E2D13A200574199 /* Lottie */,
 			);
 			productName = FinanceAppYandex;
 			productReference = 349172A82DFB80F4001896DA /* FinanceAppYandex.app */;
@@ -202,7 +219,9 @@
 			mainGroup = 3491729F2DFB80F4001896DA;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				347AA2192E1741510036F794 /* XCRemoteSwiftPackageReference "fuse-swift" */,
+				343511452E2B7F3300FAB18F /* XCRemoteSwiftPackageReference "fuse-swift" */,
+				343511E62E2B826E00FAB18F /* XCLocalSwiftPackageReference "../../Utilities" */,
+				3448E4252E2D13A200574199 /* XCRemoteSwiftPackageReference "lottie-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 349172A92DFB80F4001896DA /* Products */;
@@ -564,8 +583,15 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		343511E62E2B826E00FAB18F /* XCLocalSwiftPackageReference "../../Utilities" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Utilities;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
-		347AA2192E1741510036F794 /* XCRemoteSwiftPackageReference "fuse-swift" */ = {
+		343511452E2B7F3300FAB18F /* XCRemoteSwiftPackageReference "fuse-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/krisk/fuse-swift.git";
 			requirement = {
@@ -573,13 +599,34 @@
 				minimumVersion = 1.4.0;
 			};
 		};
+		3448E4252E2D13A200574199 /* XCRemoteSwiftPackageReference "lottie-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/airbnb/lottie-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.5.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		347AA21A2E1741510036F794 /* Fuse */ = {
+		343511462E2B7F3300FAB18F /* Fuse */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 347AA2192E1741510036F794 /* XCRemoteSwiftPackageReference "fuse-swift" */;
+			package = 343511452E2B7F3300FAB18F /* XCRemoteSwiftPackageReference "fuse-swift" */;
 			productName = Fuse;
+		};
+		343511492E2B811400FAB18F /* PieChart */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PieChart;
+		};
+		343511E72E2B826E00FAB18F /* PieChart */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PieChart;
+		};
+		3448E4262E2D13A200574199 /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3448E4252E2D13A200574199 /* XCRemoteSwiftPackageReference "lottie-ios" */;
+			productName = Lottie;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

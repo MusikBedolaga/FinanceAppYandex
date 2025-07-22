@@ -10,6 +10,8 @@ import SwiftData
 
 @main
 struct FinanceAppYandexApp: App {
+    @State private var splashFinished = false
+    
     let container: ModelContainer
     
     init() {
@@ -30,8 +32,12 @@ struct FinanceAppYandexApp: App {
     
     var body: some Scene {
         WindowGroup {
-            TabBarApp(modelContainer: container)
-                .modelContainer(container)
+            if splashFinished {
+                TabBarApp(modelContainer: container)
+                    .modelContainer(container)
+            } else {
+                SplashScreen(isFinished: $splashFinished)
+            }
         }
     }
 }
