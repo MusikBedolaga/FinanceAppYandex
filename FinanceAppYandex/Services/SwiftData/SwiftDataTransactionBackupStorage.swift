@@ -29,6 +29,7 @@ actor SwiftDataTransactionBackupStorage: TransactionBackupStorageProtocol {
         if let existing = try fetch(by: operation.id) {
             existing.operationType = operation.operationType.rawValue
             existing.transactionData = try? JSONEncoder().encode(operation.transaction)
+            existing.balanceDelta = operation.balanceDelta.map { "\($0)" }
         } else {
             let storage = BackupOperationStorage(
                 id: operation.id,

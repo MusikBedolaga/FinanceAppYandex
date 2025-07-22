@@ -57,12 +57,7 @@ actor TransactionsService {
                 case .add:
                     _ = try await self.add(transaction)
                 case .update:
-                    if let local = try? await localStorage.get(by: transaction.id),
-                       local.id == transaction.id {
-                        break // уже актуально, не вызываем update
-                    }
-
-                    _ = try await self.update(transaction: transaction)
+                    _ = try await self.update(transaction: transaction, fromBackupSync: true)
                 case .delete:
                     _ = try await self.delete(transaction: transaction)
                 }
@@ -72,7 +67,6 @@ actor TransactionsService {
                 print("Нету интернета, добавляем в бекап")
             }
         }
-        
         // Удаляем синхронизированные операции
         if !successfullySynced.isEmpty {
             try await self.backupStorage.removeMany(transactions: successfullySynced)
@@ -144,22 +138,20 @@ actor TransactionsService {
                 method: "POST",
                 body: request
             )
-            
-            var account = try await bankAccountService.getById(response.accountId)
+
+            var account = transaction.account
             account.balance += delta
-            
+
             let category = try await categoryService.getById(by: response.categoryId)
             let resultTransaction = Transaction(from: response, account: account, category: category)
 
             try await localStorage.add(resultTransaction)
             _ = try await bankAccountService.update(account)
-            
+
             try? await backupStorage.remove(by: transaction.id)
-            
+
             return resultTransaction
         } catch {
-            /// Дублирование тут не будет есть проверка на уникальность
-            /// Но мне кажется есть более оптимальное решение чем это
             let alreadyExists = try await backupStorage.get(by: transaction.id) != nil
 
             if !alreadyExists {
@@ -170,19 +162,22 @@ actor TransactionsService {
                     balanceDelta: delta
                 )
                 try await backupStorage.addOrUpdate(operation)
-                
-                var account = try await bankAccountService.get()
+
+                var account = transaction.account
                 account.balance += delta
                 _ = try await bankAccountService.update(account)
             }
-            
+
             throw error
         }
     }
 
-    func update(transaction: Transaction) async throws -> Transaction {
+    func update(transaction: Transaction, fromBackupSync: Bool = false) async throws -> Transaction {
+        let oldTransaction: Transaction? = try? await localStorage.get(by: transaction.id)
+        let oldDelta = oldTransaction.map { computeBalanceDelta(for: $0) } ?? 0
+
         let transactionRequest = TransactionRequest(from: transaction)
-        
+
         do {
             let result: Transaction = try await network.request(
                 endpoint: "transactions/\(transaction.id)",
@@ -192,40 +187,24 @@ actor TransactionsService {
 
             try await localStorage.update(transaction)
 
-            guard let oldTransaction = try? await localStorage.get(by: transaction.id) else {
-                return result
-            }
-            let oldDelta = computeBalanceDelta(for: oldTransaction)
             let newDelta = computeBalanceDelta(for: transaction)
             let delta = newDelta - oldDelta
 
-            var account = try await bankAccountService.get()
-            account.balance += delta
-            _ = try await bankAccountService.update(account)
-
-            try? await backupStorage.remove(by: transaction.id)
-            
-            return result
-
-
-        } catch {
-            guard let oldTransaction = try? await localStorage.get(by: transaction.id) else {
-                // старой транзакции нет — не можем посчитать delta
-                let backupOp = BackupOperation(
-                    id: transaction.id,
-                    operationType: .update,
-                    transaction: transaction,
-                    balanceDelta: nil
-                )
-                try await backupStorage.addOrUpdate(backupOp)
-                throw error
+            if !fromBackupSync {
+                var account = transaction.account
+                account.balance += delta
+                _ = try await bankAccountService.update(account)
             }
 
-            let oldDelta = computeBalanceDelta(for: oldTransaction)
+            try? await backupStorage.remove(by: transaction.id)
+
+            return result
+        } catch {
             let newDelta = computeBalanceDelta(for: transaction)
             let delta = newDelta - oldDelta
 
             let alreadyExists = try await backupStorage.get(by: transaction.id) != nil
+
             if !alreadyExists {
                 let operation = BackupOperation(
                     id: transaction.id,
@@ -234,9 +213,10 @@ actor TransactionsService {
                     balanceDelta: delta
                 )
                 try await backupStorage.addOrUpdate(operation)
+
                 try await localStorage.update(transaction)
 
-                var account = try await bankAccountService.get()
+                var account = transaction.account
                 account.balance += delta
                 _ = try await bankAccountService.update(account)
             }
@@ -244,7 +224,6 @@ actor TransactionsService {
             throw error
         }
     }
-
 
 
     func delete(transaction: Transaction) async throws {
@@ -257,26 +236,28 @@ actor TransactionsService {
             )
 
             try await localStorage.remove(by: transaction.id)
-            var account = try await bankAccountService.get()
+
+            var account = transaction.account
             account.balance += delta
             _ = try await bankAccountService.update(account)
 
             try? await backupStorage.remove(by: transaction.id)
 
             print("Удаление прошло успешно")
+
         } catch let error as NetworkClientError {
             switch error {
             case .emptyBodyExpectedNonEmptyResponse:
                 try? await localStorage.remove(by: transaction.id)
 
-                var account = try await bankAccountService.get()
+                var account = transaction.account
                 account.balance += delta
                 _ = try await bankAccountService.update(account)
 
                 try? await backupStorage.remove(by: transaction.id)
-                return
 
             default:
+                // 💣 Удаление не удалось — оффлайн сценарий
                 let alreadyExists = try await backupStorage.get(by: transaction.id) != nil
 
                 if !alreadyExists {
@@ -289,8 +270,8 @@ actor TransactionsService {
                     try await backupStorage.addOrUpdate(operation)
 
                     try await localStorage.remove(by: transaction.id)
-                    var account = try await bankAccountService.get()
-                    account.balance -= delta
+                    var account = transaction.account
+                    account.balance += delta
                     _ = try await bankAccountService.update(account)
                 } else {
                     print("Операция удаления уже в бэкапе, пропускаем")
@@ -300,9 +281,6 @@ actor TransactionsService {
             }
         }
     }
-
-
-
 
     
     func getFiltered(

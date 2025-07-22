@@ -28,7 +28,6 @@ extension SwiftDataBankAccountStorage: BankAccountStorageProtocol {
         let descriptor = FetchDescriptor(predicate: predicate)
 
         if let existing = try context.fetch(descriptor).first {
-            // Обновляем свойства напрямую
             existing.balance = account.balance
             existing.name = account.name
             existing.currency = account.currency
