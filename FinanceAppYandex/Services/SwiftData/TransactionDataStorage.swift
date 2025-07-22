@@ -54,10 +54,10 @@ extension SwiftDataTransactionStorage: TransactionStorageProtocol {
             throw TransactionError.notFound
         }
 
-        if existing.category?.id != transaction.category.id {
+        if existing.bankAccount?.id != transaction.account.id {
             existing.bankAccount = try fetchOrCreateBankAccount(for: transaction.account)
         }
-        
+
         if existing.category?.id != transaction.category.id {
             existing.category = try fetchOrCreateCategory(for: transaction.category)
         }
