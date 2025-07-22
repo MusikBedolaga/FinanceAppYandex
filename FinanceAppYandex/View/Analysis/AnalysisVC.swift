@@ -184,7 +184,7 @@ extension AnalysisVC: UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: AnalysisCell.identifier, for: indexPath) as! AnalysisCell
-        cell.configure(with: vm.transactions[indexPath.row])
+        cell.configure(with: vm.transactions[indexPath.row], totalAmount: vm.totalAmountForDate)
         return cell
     }
 }
