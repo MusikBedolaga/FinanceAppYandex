@@ -9,20 +9,40 @@ import Foundation
 import SwiftUI
 
 extension Color {
-    static let customPurple = Color(hex: "#6F5DB7")
+    static var customPurple: Color {
+        colorSchemeAdaptive(light: "#6F5DB7", dark: "#9C8CFF")
+    }
     
-    static let customGreen = Color(hex: "#2AE881")
+    static var customGreen: Color {
+        colorSchemeAdaptive(light: "#2AE881", dark: "#1DD68C")
+    }
     
-    static let customLightGreen = Color(hex: "#D4FAE6")
+    static var customLightGreen: Color {
+        colorSchemeAdaptive(light: "#D4FAE6", dark: "#1E3C2D")
+    }
     
-    static let customGray = Color(hex: "#8080808C")
+    static var customGray: Color {
+        colorSchemeAdaptive(light: "#8080808C", dark: "#CCCCCC33")
+    }
     
-    static let backgroundScreenColor = Color(hex: "#F2F2F7")
+    static var backgroundScreenColor: Color {
+        colorSchemeAdaptive(light: "#F2F2F7", dark: "#1C1C1E")
+    }
     
-    static let searchBarColor = Color(hex: "#7878801F")
+    static var searchBarColor: Color {
+        colorSchemeAdaptive(light: "#7878801F", dark: "#FFFFFF14")
+    }
     
-    static let subTitleColor = Color(hex: "#3C3C4399")
+    static var subTitleColor: Color {
+        colorSchemeAdaptive(light: "#3C3C4399", dark: "#EBEBF599")
+    }
+    
+    // MARK: - Точка входа
+    private static func colorSchemeAdaptive(light: String, dark: String) -> Color {
+        ColorSchemeManager.isDarkMode ? Color(hex: dark) : Color(hex: light)
+    }
 }
+
 
 //Добавление нового конструктора
 extension Color {
